@@ -20,6 +20,7 @@ python = "3.12.*"
 ruff = ">=0.17.1,<0.18"
 polars = ">=2.0.0,<3"
 tqdm = ">=4.70.1,<5"
+jsonargparse = ">=4.40.2,<5"
 
 [tool.pixi.pypi-dependencies]
 crystalog = { path = ".", editable = true }
