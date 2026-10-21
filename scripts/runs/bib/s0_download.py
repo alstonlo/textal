@@ -6,11 +6,9 @@ import pathlib
 import re
 import shutil
 import time
-import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import polars as pl
@@ -27,7 +25,7 @@ UA = "crystalog/0.1 (research; open-access papers of CSD entries)"
 BUCKET = "https://pmc-oa-opendata.s3.amazonaws.com"
 # The columns of `metadata.parquet`, one row per paper in PMC.
 SCHEMA = {
-    "id": pl.String,
+    "dir": pl.String,
     "doi": pl.String,
     "pmcid": pl.String,
     "pmc_version": pl.Int64,
@@ -78,13 +76,15 @@ def save(body, path):
     tmp.rename(path)
 
 
-def slug(title):
-    title = html.unescape(re.sub(r"<[^>]+>", "", title)).replace("­", "")
-    title = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
-    title = re.sub(r"[^a-z0-9]+", "-", title).strip("-")
-    if len(title) > 100:
-        title = title[:100].rsplit("-", 1)[0]
-    return title or "untitled"
+def paper_dir(doi):
+    """Returns the folder of a paper: its DOI, as `<publisher prefix>/<suffix>`.
+
+    The suffix is kept as it is but for the characters that are not safe in a folder name, which
+    become `_`, e.g. `10.1016/s0020-1693(00)84406-0` becomes `10.1016/s0020-1693_00_84406-0`.
+    """
+    prefix, suffix = doi.lower().split("/", 1)
+    assert re.fullmatch(r"10\.\d+", prefix), doi
+    return f"{prefix}/{re.sub(r'[^a-z0-9._-]', '_', suffix)}"
 
 
 def list_article(pmcid):
@@ -118,8 +118,8 @@ def list_article(pmcid):
     return {"pmcid": pmcid, "version": version, "files": files, "meta": meta}
 
 
-def download(rec, raw, max_bytes, min_free):
-    """Downloads the PDF, the XML and the supplementary files of one article to `raw`.
+def download(rec, raw, disk, max_bytes, min_free):
+    """Downloads the PDF, the XML and the supplementary files of one article to `raw`, on `disk`.
 
     The files are saved as `paper.pdf`, `paper.xml` and `supplementary.<ext>`, or
     `supplementary-<n>.<ext>` in the order of the XML when there are several; supplementary files
@@ -132,8 +132,8 @@ def download(rec, raw, max_bytes, min_free):
         The columns of `metadata.parquet` that describe the download.
     """
     # Raised outside the try block, so that a full disk stops the whole run.
-    if shutil.disk_usage(raw.parents[1]).free < min_free:
-        raise RuntimeError(f"less than {min_free} bytes free in {raw.parents[1]}")
+    if shutil.disk_usage(disk).free < min_free:
+        raise RuntimeError(f"less than {min_free} bytes free in {disk}")
 
     stem = f"{rec['pmcid']}.{rec['version']}"
     files = {html.unescape(k): v for k, v in rec["files"].items()}
@@ -205,7 +205,7 @@ def main(
     resume: bool = True,
     list_only: bool = False,
 ):
-    """Downloads every CSD paper in the PMC open-access bucket to `<out>/<year>-<title>/raw/`.
+    """Downloads every CSD paper in the PMC open-access bucket to `<out>/<DOI>/raw/`.
 
     First downloads, to `data/raw/pmc/` and only if they are not there yet, the PMCID of every DOI
     in PMC (`PMC-ids.csv.gz`) and the listing of each CSD paper in the bucket (`s3.jsonl`, which
@@ -264,7 +264,7 @@ def main(
             year = re.search(r"\b(?:19|20)\d{2}\b", meta.get("citation", ""))
             p["year"] = int(year.group(0)) if year else 0
         p |= {
-            "id": f"{p['year']}-{slug(p['title'])}" if rec["version"] else None,
+            "dir": paper_dir(p["doi"]) if rec["version"] else None,
             "pmc_version": rec["version"],
             "license": meta.get("license_code"),
             "is_pmc_openaccess": meta.get("is_pmc_openaccess"),
@@ -274,13 +274,8 @@ def main(
         }
         rows.append(p)
 
-    # Papers of the same year and title get a suffix from their DOI, which does not depend on the
-    # order or the set of papers.
-    counts = Counter(r["id"] for r in rows if r["id"])
-    for r in rows:
-        if counts[r["id"]] > 1:
-            r["id"] += "-" + hashlib.sha1(r["doi"].encode()).hexdigest()[:6]
-    assert Counter(r["id"] for r in rows if r["id"]).most_common(1)[0][1] == 1
+    dirs = [r["dir"] for r in rows if r["dir"]]
+    assert len(dirs) == len(set(dirs)), "two DOIs with one folder"
 
     # Each finished paper is appended to the log, so a stopped run can resume.
     out.mkdir(parents=True, exist_ok=True)
@@ -291,17 +286,18 @@ def main(
     if log.exists():
         with open(log) as f:
             done = {d["doi"]: d for d in map(json.loads, f)}
-    ok = {r["doi"] for r in rows if r["id"] and (out / r["id"]).exists()}
+    ok = {r["doi"] for r in rows if r["dir"] and (out / r["dir"]).exists()}
     ok &= {doi for doi, d in done.items() if not d["error"]}
 
-    todo = [r for r in rows if r["id"] and (r["doi"] not in ok)]
+    todo = [r for r in rows if r["dir"] and (r["doi"] not in ok)]
     print(f"{len(rows)} papers in PMC, {len(ok)} done, {len(todo)} to download")
     with ThreadPoolExecutor(threads) as ex, open(log, "a") as f:
         futures = {
             ex.submit(
                 download,
                 rec=recs[r["pmcid"]],
-                raw=out / r["id"] / "raw",
+                raw=out / r["dir"] / "raw",
+                disk=out,
                 max_bytes=max_mb * 2**20,
                 min_free=min_free_gb * 2**30,
             ): r["doi"]
@@ -313,7 +309,7 @@ def main(
             f.flush()
 
     metadata = pl.DataFrame([r | done.get(r["doi"], {}) for r in rows], schema=SCHEMA)
-    metadata = metadata.sort("id", "doi", nulls_last=True)
+    metadata = metadata.sort("dir", "doi", nulls_last=True)
     metadata.write_parquet(out / "metadata.parquet")
     print(metadata.group_by(error=pl.col("error").str.extract(r"^([^:(]+)")).len().sort("len"))
     print(f"Wrote {out / 'metadata.parquet'}")
