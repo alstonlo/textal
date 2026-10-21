@@ -6,12 +6,26 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 
 - `src/dataset/`: the Python package that builds the dataset: CCDC metadata, paper download, OCR and extraction.
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the report.
-- `scripts/`: the scripts that run each stage, from CCDC metadata download to extraction.
-  - `download/`: the scripts that download the CCDC metadata and the papers, and summarize them
-    (the numbers in [`csd-journal-stats.md`](csd-journal-stats.md)).
+- `scripts/`: the scripts, run from the repository root.
+  - `runs/`: the scripts that make the data, one folder per stage, from CCDC metadata download to
+    extraction.
+    - `bib/`: the bibliography, i.e. the papers of the CSD entries: downloads the open-access
+      papers from PubMed Central (PMC), with the PMCID of each DOI.
+  - `analysis/`: the scripts that only read the data and print statistics (e.g., the numbers in
+    [`csd-journal-stats.md`](csd-journal-stats.md)).
 - `data/` (untracked): the downloaded metadata, PDFs, OCR output and extracted records.
   - `raw/`: the files as downloaded, before any processing (e.g., `csd_metadata.full.parquet`, the
     metadata of every CSD entry).
+  - `papers/`: one folder `<year>-<title>/` per paper (the title in lowercase, with every run of
+    other characters than letters and digits replaced by `-`). Its `raw/` holds the paper as
+    downloaded: `paper.pdf`, `paper.xml` (the full text from PMC, indented to be readable) and the
+    supplementary files that are text documents (PDF, Word, RTF, ODT, plain text, TeX or HTML),
+    `supplementary.<ext>`, or `supplementary-<n>.<ext>` when there are several. Other
+    supplementary files (data such as CIFs, archives, images, videos) are not downloaded.
+    `papers/metadata.parquet` has one row per CSD paper in PMC, retracted papers left out: its
+    folder (`id`, the folder name), DOI, the CSD refcodes of its entries, its licence and what was
+    downloaded (the columns are in `SCHEMA` of `scripts/runs/bib/s0_download.py`).
+    `papers/download.jsonl` logs each downloaded paper, so a stopped download can resume.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 
@@ -19,8 +33,9 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 
 - Every subfolder of `sandbox/` is named `YYYY-MM-DD-HH-MM-<topic>`, stamped with the local date
   and time (24-hour clock) at which it was created, e.g. `2026-10-21-14-17-journal-subset`.
-- Every script in a subfolder of `scripts/` is named `s<N>_<name>.py`, where `<N>` is the order
-  in which it runs: `s0_` first, then `s1_`, `s2_`, and so on. A script may only use the outputs
-  of scripts with a smaller `<N>`. Scripts that share the same `<N>` do not depend on each other,
-  so they can run at the same time. Run scripts from the repository root, e.g.
-  `pixi run python scripts/download/s0_csd_stats.py`.
+- Every script in a stage folder of `scripts/runs/` is named `s<N>_<name>.py`, where `<N>` is the
+  order in which it runs: `s0_` first, then `s1_`, `s2_`, and so on. A script may only use the
+  outputs of scripts with a smaller `<N>`. Scripts that share the same `<N>` do not depend on each
+  other, so they can run at the same time. Run scripts from the repository root, e.g.
+  `pixi run python scripts/runs/bib/s0_download.py`. The same rules hold for
+  `scripts/analysis/`, whose scripts may also use the outputs of any script in `scripts/runs/`.
