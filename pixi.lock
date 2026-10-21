@@ -71,6 +71,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/validators-0.36.0-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-hebe6cf0_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_7.conda
+      - pypi: git+https://github.com/alstonlo/recess.git#13fbb94b781a8e0144ca41706f3e170eee1d5e57
       - pypi: ./
 packages:
 - conda: https://conda.anaconda.org/conda-forge/linux-64/_openmp_mutex-4.5-20_gnu.conda
@@ -213,7 +214,7 @@ packages:
 - pypi: ./
   name: crystalog
   version: 0.1.0
-  sha256: a27f2b65a4cfb51b9154383a85155b73b540ae74d118cda5676dcd396f1a550a
+  sha256: 1bf0ce70e9e5ace632d01b5e4e93e691c263cb9df9bcd1442fef2ba059bc7445
   requires_python: '>=3.12,<3.13'
 - conda: https://conda.anaconda.org/conda-forge/noarch/dataclasses-0.8-pyhc8e2a94_3.tar.bz2
   sha256: 63a83e62e0939bc1ab32de4ec736f6403084198c4639638b354a352113809c92
@@ -745,6 +746,10 @@ packages:
   purls: []
   size: 348899
   timestamp: 1787033801506
+- pypi: git+https://github.com/alstonlo/recess.git#13fbb94b781a8e0144ca41706f3e170eee1d5e57
+  name: recess
+  version: 0.1.0
+  requires_python: '>=3.11'
 - conda: https://conda.anaconda.org/conda-forge/noarch/referencing-0.37.0-pyhcf101f3_0.conda
   sha256: 0577eedfb347ff94d0f2fa6c052c502989b028216996b45c7f21236f25864414
   md5: 870293df500ca7e18bedefa5838a22ab
