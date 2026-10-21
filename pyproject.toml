@@ -27,6 +27,16 @@ lxml = ">=6.1.3,<7"
 crystalog = { path = ".", editable = true }
 recess = { git = "https://github.com/alstonlo/recess.git" }
 
+# MinerU and its GPU stack (PyTorch, vLLM) live in their own environment: `pixi run -e ocr ...`.
+[tool.pixi.feature.ocr.dependencies]
+poppler = "*"
+
+[tool.pixi.feature.ocr.pypi-dependencies]
+mineru = { version = ">=4.0.12,<5", extras = ["full"] }
+
+[tool.pixi.environments]
+ocr = ["ocr"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
