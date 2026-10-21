@@ -30,6 +30,7 @@ EXTRACTION_STATUSES = ["ok", "no_paper", "compound_not_found", "truncated", "ref
 # Columns read from the paper; evidence quotes must name one of these.
 EVIDENCED_FIELDS = [
     "compound_label",
+    "match_basis",
     "synthesis",
     "crystallisation",
     "characterisation",

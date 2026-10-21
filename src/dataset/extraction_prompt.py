@@ -16,14 +16,14 @@ from pathlib import Path
 
 import polars as pl
 
-from dataset.extraction_schema import COLUMNS, describe
+from dataset.extraction_schema import COLUMNS, EVIDENCED_FIELDS, describe
 
 PROMPT_VERSION = "v1"
 
 ROOT = Path(__file__).parents[2]
 METADATA = ROOT / "data" / "csd_metadata.full.parquet"
 DOIS = ROOT / "data" / "csd_dois.parquet"
-PAPERS = ROOT / "papers"
+PAPERS = ROOT / "data" / "papers"
 
 # Columns the model fills; everything else in the schema is added by the pipeline.
 MODEL_FIELDS = [
@@ -111,8 +111,11 @@ paragraph goes in `other_notes`.
 Never write placeholders such as "not reported" or "N/A".
 - Older papers are often scans. Read them as carefully as typeset text, and ignore \
 page furniture such as running headers, journal adverts and reference lists.
-- Long numeric tables (atom coordinates, structure factors) are already in the CSD; \
-skip them.
+- Skip what the CSD already holds from the crystal structure: unit cell, space \
+group, refinement details, atom coordinates, bond lengths and angles, ring \
+conformations, dihedral angles, hydrogen bonding and packing. Record them only when \
+the paper uses them to explain something else, such as a property or a difference \
+between forms, and then only that point.
 
 Evidence
 - For every non-null field, give at least one quote that supports it: `field` is \
@@ -162,9 +165,7 @@ def output_schema() -> dict:
                     "properties": {
                         "field": {
                             "type": "string",
-                            "enum": [
-                                n for n in MODEL_FIELDS if n not in ("identifier", "evidence")
-                            ],
+                            "enum": EVIDENCED_FIELDS,
                         },
                         "source_file": {"type": "string"},
                         "page": {"type": ["integer", "null"]},
@@ -300,7 +301,9 @@ def build(doi: str, pdfs: list[Path]) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--doi", help="Build only this paper (default: every paper in papers/)")
+    parser.add_argument(
+        "--doi", help="Build only this paper (default: every paper in data/papers/)"
+    )
     parser.add_argument("--out", type=Path, default=ROOT / "data" / "prompts")
     args = parser.parse_args()
 
