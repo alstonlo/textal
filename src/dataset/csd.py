@@ -18,8 +18,8 @@ def read_papers(path):
         path: Path to the full CSD metadata parquet.
 
     Returns:
-        A frame with columns `id`, `journal`, `year` and `doi`. DOIs are not case-sensitive, so
-        they are stripped and lowercased.
+        A frame with columns `id`, `journal` (abbreviated name), `journal_full`, `year` and `doi`.
+        DOIs are not case-sensitive, so they are stripped and lowercased.
     """
     df = pl.read_parquet(path, columns=["identifier", "publication", "publications"])
     assert df["identifier"].is_unique().all()
@@ -29,6 +29,7 @@ def read_papers(path):
     df = df.select(
         id="identifier",
         journal=pub.struct.field("journal").struct.field("name"),
+        journal_full=pub.struct.field("journal").struct.field("full_name"),
         year=pub.struct.field("year"),
         doi=pub.struct.field("doi").str.strip_chars().str.to_lowercase(),
     )

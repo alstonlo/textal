@@ -8,7 +8,7 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the report.
 - `scripts/`: the scripts that run each stage, from CCDC metadata download to extraction.
   - `download/`: the scripts that download the CCDC metadata and the papers, and summarize them
-    (the numbers in [`csd-statistics.md`](csd-statistics.md)).
+    (the numbers in [`csd-journal-stats.md`](csd-journal-stats.md)).
 - `data/` (untracked): the downloaded metadata, PDFs, OCR output and extracted records.
   - `raw/`: the files as downloaded, before any processing (e.g., `csd_metadata.full.parquet`, the
     metadata of every CSD entry).
