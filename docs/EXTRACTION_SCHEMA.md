@@ -1,6 +1,6 @@
 # Paper extraction schema
 
-Generated from `extraction_schema.py`; edit that file, not this one.
+Generated from `src/dataset/extraction_schema.py`; edit that file, not this one.
 
 - One row per CSD entry, paper and prompt version: the key is `identifier` + `doi` + `prompt_version`.
 - Paper content is free text, one paragraph per topic, written in English and staying close to the paper: numbers, conditions and names are kept. Structured fields are derived from the paragraphs later.

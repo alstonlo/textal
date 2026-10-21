@@ -1,7 +1,8 @@
 """Schema for LLM-extracted paper information, one row per CSD entry and run.
 
-Run `uv run python extraction_schema.py` to regenerate EXTRACTION_SCHEMA.md,
-EXTRACTION_SCHEMA.slack.txt and an empty `extraction_template.parquet`.
+Run `uv run python -m dataset.extraction_schema` to regenerate
+docs/EXTRACTION_SCHEMA.md, docs/EXTRACTION_SCHEMA.slack.txt and an empty
+docs/extraction_template.parquet.
 The conventions shared with colleagues are in NOTES below.
 """
 
@@ -196,7 +197,7 @@ def to_markdown() -> str:
     lines = [
         "# Paper extraction schema",
         "",
-        "Generated from `extraction_schema.py`; edit that file, not this one.",
+        "Generated from `src/dataset/extraction_schema.py`; edit that file, not this one.",
         "",
         *(f"- {n}" for n in NOTES),
     ]
@@ -222,8 +223,8 @@ def to_slack() -> str:
 
 
 if __name__ == "__main__":
-    here = Path(__file__).parent
-    (here / "EXTRACTION_SCHEMA.md").write_text(to_markdown())
-    (here / "EXTRACTION_SCHEMA.slack.txt").write_text(to_slack())
-    pl.DataFrame(schema=SCHEMA).write_parquet(here / "extraction_template.parquet")
+    docs = Path(__file__).parents[2] / "docs"
+    (docs / "EXTRACTION_SCHEMA.md").write_text(to_markdown())
+    (docs / "EXTRACTION_SCHEMA.slack.txt").write_text(to_slack())
+    pl.DataFrame(schema=SCHEMA).write_parquet(docs / "extraction_template.parquet")
     print(f"{len(COLUMNS)} columns written")
