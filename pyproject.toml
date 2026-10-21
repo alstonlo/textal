@@ -1,19 +1,40 @@
 [project]
-authors = []
-dependencies = []
-name = "clari-data-osi-hack"
-requires-python = ">= 3.11"
+name = "crystalog"
 version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = []
 
 [build-system]
-build-backend = "hatchling.build"
 requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/dataset", "src/viz"]
 
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64"]
 
-[tool.pixi.pypi-dependencies]
-clari_data_osi_hack = { path = ".", editable = true }
+[tool.pixi.dependencies]
+python = "3.12.*"
+ruff = ">=0.17.1,<0.18"
+polars = ">=2.0.0,<3"
+tqdm = ">=4.70.1,<5"
 
-[tool.pixi.tasks]
+[tool.pixi.pypi-dependencies]
+crystalog = { path = ".", editable = true }
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+extend-select = ["I"]
+ignore = [
+    "E741",
+    "E722",
+    "E402",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
