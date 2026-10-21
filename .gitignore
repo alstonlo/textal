@@ -218,3 +218,14 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+CLAUDE.md
+.vscode
+.claude
+/data
+/logs
+/sandbox
