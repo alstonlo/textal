@@ -16,7 +16,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     `/entry/<refcode>` shows one entry: its crystal structure (the CIF, drawn by py3Dmol in
     `crystal.py`), its molecule (drawn by RDKit), its CSD metadata, its paper and its extracted
     record.
-  - `assets/` (untracked but for `.gitkeep`, as they hold CSD data): the tables of the website,
+  - `assets/` (untracked but for `.gitkeep` and `stats.json`, as the entry tables hold CSD
+    data): the tables of the website,
     written by `scripts/runs/viz/s0_assets.py`, so that the website needs neither the CSD
     metadata nor the downloaded papers.
     `entries.parquet` has one row per entry: its CIF, CSD metadata, DrugBank drugs, and its

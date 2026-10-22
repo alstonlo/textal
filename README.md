@@ -85,8 +85,8 @@ in open-access papers of Acta Crystallographica Section E (289 papers). Each ent
 paper and its extracted record.
 
 The website reads only the tables in `src/viz/assets/`, so once they are built it runs without
-the CSD metadata or the downloaded papers. The tables are not in this repository, since they hold
-CSD data:
+the CSD metadata or the downloaded papers. Only `stats.json` is in this repository; the other two
+tables hold CSD data, so they are not:
 
 - `entries.parquet`: one row per entry, with its refcode, CCDC number, DrugBank drugs, SMILES,
   CIF, CSD metadata (such as formula, solvent, colour and temperature), the paper's DOI, PMCID,
@@ -203,5 +203,5 @@ marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
 ## Licence
 
 The CSD metadata is licensed by the CCDC and is not redistributed here, nor are the website's
-tables built from it. Each paper keeps the licence given in its PMC record; the website shows the
+entry tables built from it (`stats.json` holds counts only). Each paper keeps the licence given in its PMC record; the website shows the
 text of the CC BY papers only.

@@ -229,6 +229,7 @@ CLAUDE.md
 /data
 /src/viz/assets/*
 !/src/viz/assets/.gitkeep
+!/src/viz/assets/stats.json
 /logs
 /sandbox
 .snakemake
