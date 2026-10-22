@@ -854,7 +854,7 @@ footer a:hover {
   font-size: 12px;
 }
 .extraction-time {
-  font-size: 11px;
+  font-size: 14px;
   overflow-wrap: anywhere;
 }
 .media-section-head h3 {
@@ -990,78 +990,25 @@ footer a:hover {
   max-width: 90ch;
   line-height: 1.7;
 }
+/* Keep the original main reading width and type scale. */
 .main-reading {
-  max-width: 1440px;
+  max-width: var(--width);
   margin: 64px auto 0;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(32px, 4vw, 64px);
+  gap: 64px;
   align-items: start;
-  padding-top: 40px;
+  padding-top: 32px;
 }
 .main-reading .record,
 .main-reading .paper {
   min-width: 0;
 }
-.main-reading h2 {
-  font-size: 24px;
-  line-height: 1.3;
-  max-width: 30ch;
-}
-.main-reading .record-lead {
-  font-size: 18px;
-  line-height: 1.8;
-  white-space: pre-line;
-  margin-top: 24px;
-  max-width: none;
-}
-.main-reading .record-match {
-  line-height: 1.75;
-}
-.main-reading .record-fields {
-  margin-top: 32px;
-}
-.main-reading .record-fields div {
-  padding: 24px 0;
-}
-.main-reading .record-fields dd {
-  font-size: 15px;
-  line-height: 1.85;
-}
+.main-reading .record-lead,
 .main-reading .record-fields p {
-  max-width: none;
   white-space: pre-line;
-}
-.main-reading .paper-title {
-  margin-top: 24px;
-  font-size: 18px;
-  line-height: 1.5;
-  max-width: none;
 }
 .main-reading .paper-citation {
   margin-top: 12px;
-  line-height: 1.8;
-  max-width: none;
   overflow-wrap: anywhere;
-}
-.main-reading .paper-text {
-  margin-top: 12px;
-  padding: 28px 30px;
-  max-height: 1000px;
-  font-size: 15px;
-  line-height: 1.8;
-}
-.main-reading .paper-text p {
-  margin-bottom: 16px;
-  max-width: none;
-}
-.main-reading .paper-text h1,
-.main-reading .paper-text h2,
-.main-reading .paper-text h3 {
-  font-size: 18px;
-  line-height: 1.5;
-}
-.main-reading .paper-text table {
-  font-size: 13px;
 }
 .main-reading .paper-text pre {
   overflow: auto;
@@ -1095,7 +1042,7 @@ footer a:hover {
   margin-top: 28px;
   padding-top: 20px;
   font-size: 14px;
-  line-height: 1.8;
+  line-height: 1.55;
 }
 .full-snippets summary {
   cursor: pointer;
@@ -1151,14 +1098,10 @@ footer a:hover {
   margin-top: 14px;
   overflow-wrap: anywhere;
 }
-@media (max-width: 1100px) {
+@media (max-width: 900px) {
   .main-reading {
     grid-template-columns: minmax(0, 1fr);
-    max-width: 850px;
-    gap: 48px;
-  }
-  .main-reading .paper-text {
-    max-height: 800px;
+    gap: 40px;
   }
   .data-disclaimer {
     display: block;
@@ -1180,12 +1123,6 @@ footer a:hover {
   }
 }
 
-.strip-item small {
-  display: block;
-  margin-top: 8px;
-  font-size: 10px;
-  line-height: 1.5;
-}
 .name-source {
   margin: -8px 0 20px;
 }

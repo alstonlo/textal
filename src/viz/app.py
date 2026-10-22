@@ -5,6 +5,7 @@ import math
 import os
 import textwrap
 import threading
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlencode
 
@@ -106,29 +107,57 @@ def load_stats(entries):
         licenses[license_name] += 1
     tips = {
         "orientation": "h",
-        "texttemplate": "  %{x:,}",
+        "texttemplate": "\u2002%{x:,}",
+        "textfont": {"color": INK, "size": 10},
         "textposition": "outside",
         "cliponaxis": False,
         "hovertemplate": "%{customdata}: %{x:,}<extra></extra>",
     }
 
-    def horizontal(counts):
+    def horizontal(counts, journal_chart=False):
+        # Use the original main's compact, wrapped labels and black count text.
+        # Keep the complete publisher journal name in hover text.
+        aliases = {
+            "Angewandte Chemie (International ed. in English)": "Angewandte Chemie Int. Ed.",
+            "Chemistry (Weinheim an der Bergstrasse, Germany)": "Chemistry",
+            "Advanced science (Weinheim, Baden-Wurttemberg, Germany)": "Advanced Science",
+        }
         items = list(counts)
+        labels = [
+            "<br>".join(textwrap.wrap(aliases.get(name, name) if journal_chart else name, 24))
+            for name, _ in items
+        ]
+        primary = [
+            (name, n, label)
+            for (name, n), label in zip(items, labels, strict=True)
+            if name != "Other journals"
+        ]
+        other = [
+            (name, n, label)
+            for (name, n), label in zip(items, labels, strict=True)
+            if name == "Other journals"
+        ]
+        traces = [
+            go.Bar(
+                **tips,
+                x=[n for _, n, _ in group],
+                y=[label for _, _, label in group],
+                customdata=[name for name, _, _ in group],
+                meta=colour,
+            )
+            for group, colour in ((primary, "bar-warm"), (other, "bar-other"))
+            if group
+        ]
         return figure(
-            [
-                go.Bar(
-                    **tips,
-                    x=[n for _, n in items],
-                    y=["<br>".join(textwrap.wrap(name, 26)) for name, _ in items],
-                    customdata=[name for name, _ in items],
-                    meta="bar-warm",
-                )
-            ],
+            traces,
+            barmode="overlay",
             xaxis={
                 "title": {"text": "Papers"},
+                "tickformat": "~s",
+                "showgrid": True,
                 "range": [0, max([n for _, n in items] or [1]) * 1.3],
             },
-            yaxis={"autorange": "reversed"},
+            yaxis={"autorange": "reversed", "categoryorder": "array", "categoryarray": labels},
         )
 
     top = journals.most_common(12)
@@ -143,7 +172,7 @@ def load_stats(entries):
         "pmc_years": figure(
             [go.Bar(x=y, y=[years[v] for v in y], meta="bar")], yaxis={"title": {"text": "Papers"}}
         ),
-        "journals": horizontal(top),
+        "journals": horizontal(top, journal_chart=True),
         "licenses": horizontal(licenses.most_common()),
     }
     return {
@@ -193,6 +222,16 @@ templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.globals["root"] = ""
 
 
+def extraction_date(value):
+    try:
+        return datetime.fromisoformat(str(value)).strftime("%-d %B %Y")
+    except ValueError:
+        return "date unavailable"
+
+
+templates.env.filters["extraction_date"] = extraction_date
+
+
 @app.middleware("http")
 async def update_public_snapshot(request, call_next):
     # A completed import becomes visible on the next page load; the API never reads
@@ -208,16 +247,8 @@ def index(request: Request):
         for r in ("COVPIN01", "AWOHOM", "PODZIU", "XEXYOR", "BAPTUL", "BINBOT")
         if r in BY_ID
     ]
-    journal_labels = {
-        "Acta Crystallographica E": "Acta E",
-        "Acta pharmaceutica Sinica. B": "Acta Pharmaceutica Sinica B",
-        "Angewandte Chemie (International ed. in English)": "Angewandte Chemie Int. Ed.",
-        "Chemistry of materials : a publication of the American Chemical Society": "Chemistry of Materials",
-    }
     return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"stats": STATS, "hero": hero, "snapshot": SNAPSHOT, "journal_labels": journal_labels},
+        request, "index.html", {"stats": STATS, "hero": hero, "snapshot": SNAPSHOT}
     )
 
 

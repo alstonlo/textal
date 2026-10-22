@@ -26,7 +26,7 @@
       <h2>What the paper says about this crystal</h2>
       {% if x.status=="pending" %}<p class="muted record-lead">This entry is imported. Its extraction was still running when this snapshot was built.</p>{% else %}
         {% if x.summary %}<p class="record-lead">{{ x.summary }}</p>{% endif %}
-        {% if x.compound_label %}<p class="muted small record-match">The paper calls this {{ x.compound_label }}.</p>{% endif %}
+        {% if x.compound_label %}<p class="muted {% if x.summary %}record-match{% else %}record-lead{% endif %}">The paper calls this {{ x.compound_label }}.</p>{% endif %}
         {% if not x.fields and not x.summary %}<p class="muted record-lead">No publisher-supported extraction is available for this record. Status: {{ x.status|replace('_', ' ') }}.</p>{% endif %}
         <dl class="record-fields">
           {% for field in fields if x.fields.get(field) %}
@@ -41,7 +41,7 @@
           {% endfor %}
         </dl>
       {% endif %}
-      {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} · {{ x.extracted_at }}.</p>{% endif %}
+      {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} on {{ x.extracted_at|extraction_date }}.</p>{% endif %}
       {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Full Acta E synthesis / experimental snippets</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
     </div>
     <div class="paper" data-doi="{{ e.doi }}">
