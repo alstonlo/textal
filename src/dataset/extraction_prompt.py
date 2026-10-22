@@ -1,12 +1,15 @@
 """Build the per-paper prompt for the extraction agents.
 
 One agent call per paper: the system prompt is fixed (so it can be cached across
-calls), the paper's PDFs are attached as files, and the user message lists the
-paper's CSD entries. The model returns one record per entry; the pipeline adds the
+calls), and the user message lists the paper's CSD entries. The paper's files go in
+either as attached PDFs or as their text marked by page: `--input text` extracts it
+with PyMuPDF, `--input mineru` reads MinerU's parse from data/mineru/ (run
+`mineru-kit parse data/papers -o data/mineru -f zip` and unzip each bundle first). The model returns one record per entry; the pipeline adds the
 provenance columns itself.
 
 Usage:
-    uv run python -m dataset.extraction_prompt [--doi DOI] [--out DIR]
+    pixi run python -m dataset.extraction_prompt [--doi DOI] [--input pdf|text|mineru]
+        [--out DIR]
 """
 
 import argparse
@@ -15,15 +18,20 @@ import re
 from pathlib import Path
 
 import polars as pl
+import pymupdf
 
 from dataset.extraction_schema import COLUMNS, EVIDENCED_FIELDS, describe
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 
 ROOT = Path(__file__).parents[2]
 METADATA = ROOT / "data" / "csd_metadata.full.parquet"
 DOIS = ROOT / "data" / "csd_dois.parquet"
 PAPERS = ROOT / "data" / "papers"
+MINERU = ROOT / "data" / "mineru"
+
+# MinerU block types that are page furniture rather than paper content.
+MINERU_SKIP = {"header", "footer", "page_number", "aside_text"}
 
 # Columns the model fills; everything else in the schema is added by the pipeline.
 MODEL_FIELDS = [
@@ -80,8 +88,9 @@ SYSTEM_PROMPT = f"""\
 You read scientific papers that report crystal structures and record what each \
 paper says about each of its structures in the Cambridge Structural Database (CSD).
 
-You get one paper as attached PDF files (the main paper and any supplementary \
-files) and a table of the CSD entries linked to it. Return one record \
+You get one paper's files (the main paper and any supplementary files), either \
+attached as PDFs or as their extracted text, and a table of the CSD entries linked \
+to it. Return one record \
 for every entry in the table, in the same order. The CSD already holds the crystal \
 structure itself and the fields shown in the table; your job is to capture what the \
 paper adds about each entry.
@@ -110,7 +119,9 @@ paragraph goes in `other_notes`.
 - If the paper says nothing on a topic for an entry, return null for that field. \
 Never write placeholders such as "not reported" or "N/A".
 - Older papers are often scans. Read them as carefully as typeset text, and ignore \
-page furniture such as running headers, journal adverts and reference lists.
+page furniture such as running headers, journal adverts and reference lists. \
+Extracted text can have broken line wraps, odd spacing or scrambled tables; read \
+through those, but never correct the paper's numbers or wording.
 - Skip what the CSD already holds from the crystal structure: unit cell, space \
 group, refinement details, atom coordinates, bond lengths and angles, ring \
 conformations, dihedral angles, hydrogen bonding and packing. Record them only when \
@@ -119,10 +130,13 @@ between forms, and then only that point.
 
 Evidence
 - For every non-null field, give at least one quote that supports it: `field` is \
-the field name, `source_file` is the attached file's label as listed in the message, \
-`page` is the 1-based page number within that PDF file (not the journal's printed \
-page number), and `quote` is a short verbatim span (one sentence or less) copied \
-from the paper, in the original language.
+the field name, `source_file` is the file's label as listed in the message, \
+`page` is the 1-based page number within that file (not the journal's printed \
+page number; in extracted text, the number in the `[page N]` marker above the \
+quote), and `quote` is a short span (one sentence or less) copied character for \
+character from the paper, in the original language. Never paraphrase a quote, \
+join separate fragments into one, or change its numbers, signs or words. A quote \
+must contain the fact it supports.
 
 Fields to return for each entry
 {_field_list(MODEL_FIELDS)}
@@ -260,15 +274,43 @@ def file_labels(pdfs: list[Path]) -> list[str]:
     return labels
 
 
-def user_message(doi: str, entries: pl.DataFrame, pdfs: list[Path]) -> str:
-    files = "\n".join(
-        f"- {label} ({file_kind(pdf)} paper)" for label, pdf in zip(file_labels(pdfs), pdfs)
-    )
+def pdf_text(pdf: Path) -> str:
+    """The PDF's text layer, each page under a `[page N]` marker."""
+    with pymupdf.open(pdf) as doc:
+        pages = [re.sub(r"[ \t]+", " ", page.get_text()).strip() for page in doc]
+    return "\n\n".join(f"[page {i}]\n{text}" for i, text in enumerate(pages, 1))
+
+
+def mineru_text(pdf: Path) -> str:
+    """MinerU's parse of the PDF, each page under a `[page N]` marker.
+
+    Drops headers, footers and page numbers; keeps figure captions.
+    """
+    content = json.loads((MINERU / pdf.stem / "structured_content.json").read_text())
+    pages = []
+    for page in content["pages"]:
+        parts = []
+        for block in page["blocks"]:
+            if block["type"] in MINERU_SKIP:
+                continue
+            parts += [c["content"] for c in block.get("captions", [])]
+            parts.append(block.get("content") or "")
+            parts += [f["content"] for f in block.get("footnotes", [])]
+        pages.append("\n\n".join(p for p in parts if p))
+    return "\n\n".join(f"[page {i}]\n{text}" for i, text in enumerate(pages, 1))
+
+
+def user_message(doi: str, entries: pl.DataFrame, pdfs: list[Path], input: str = "pdf") -> str:
+    labels = file_labels(pdfs)
+    files = "\n".join(f"- {label} ({file_kind(pdf)} paper)" for label, pdf in zip(labels, pdfs))
+    extract = mineru_text if input == "mineru" else pdf_text
+    texts = [f'<file name="{label}">\n{extract(pdf)}\n</file>' for label, pdf in zip(labels, pdfs)]
+    heading = "Attached files" if input == "pdf" else "Files (extracted text follows the table)"
     return "\n".join(
         [
             f"Paper DOI: {normalize_doi(doi)}",
             "",
-            f"Attached files:\n{files}",
+            f"{heading}:\n{files}",
             "",
             (
                 f"CSD entries linked to this paper ({len(entries)}). "
@@ -276,25 +318,31 @@ def user_message(doi: str, entries: pl.DataFrame, pdfs: list[Path]) -> str:
             ),
             "",
             _entry_table(entries),
+            *(["", *texts] if input != "pdf" else []),
         ]
     )
 
 
-def build(doi: str, pdfs: list[Path]) -> dict:
-    """Everything one agent call needs, plus the provenance the pipeline will record."""
+def build(doi: str, pdfs: list[Path], input: str = "pdf") -> dict:
+    """Everything one agent call needs, plus the provenance the pipeline will record.
+
+    `input` is `pdf` to attach the files, or `text` or `mineru` to put their text,
+    from PyMuPDF or MinerU, in the user message.
+    """
     entries = entries_for(doi)
     return {
         "doi": normalize_doi(doi),
         "prompt_version": PROMPT_VERSION,
         "identifiers": entries["identifier"].to_list(),
-        # Attach these PDFs to the request, in this order, before the user message.
-        # The model cites them by label; map labels back to files with this list.
+        # The model cites files by label; map labels back to files with this list.
+        # Only `pdf` attachments are sent as files, before the user message.
         "attachments": [
-            {"label": label, "path": str(pdf)} for label, pdf in zip(file_labels(pdfs), pdfs)
+            {"label": label, "path": str(pdf), "input": input}
+            for label, pdf in zip(file_labels(pdfs), pdfs)
         ],
-        "source_files": [{"name": p.name, "kind": file_kind(p), "input": "pdf"} for p in pdfs],
+        "source_files": [{"name": p.name, "kind": file_kind(p), "input": input} for p in pdfs],
         "system": SYSTEM_PROMPT,
-        "user": user_message(doi, entries, pdfs),
+        "user": user_message(doi, entries, pdfs, input),
         "output_schema": output_schema(),
     }
 
@@ -303,6 +351,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
         "--doi", help="Build only this paper (default: every paper in data/papers/)"
+    )
+    parser.add_argument(
+        "--input",
+        choices=["pdf", "text", "mineru"],
+        default="pdf",
+        help="Attach the PDFs, or send their text from PyMuPDF or MinerU",
     )
     parser.add_argument("--out", type=Path, default=ROOT / "data" / "prompts")
     args = parser.parse_args()
@@ -318,7 +372,7 @@ def main() -> None:
             if doi is None:
                 print(f"skip {key}: no CSD entry links to this DOI")
             continue
-        job = build(doi, pdfs)
+        job = build(doi, pdfs, args.input)
         path = args.out / f"{key}.json"
         path.write_text(json.dumps(job, indent=1, ensure_ascii=False))
         print(f"{key}: {len(job['identifiers'])} entries, {len(pdfs)} PDF(s) -> {path}")

@@ -29,78 +29,85 @@ pixi install
 ```
 
 MinerU, the optical character recognition (OCR) tool for scanned PDFs, requires a GPU.
-Install it in its own environment with `pixi install -e ocr`.
+Install it in its own environment:
+
+```bash
+pixi install -e ocr
+```
 
 ## Usage
 
-### Input data
+### CSD Download
 
-The pipeline starts from `data/raw/csd_metadata.full.parquet`, which contains metadata for every
-CSD entry, including its refcode (entry identifier), compound name, journal and digital object
+The pipeline starts from `data/raw/csd_metadata.full.parquet`, which holds the metadata of every
+CSD entry, such as its refcode (entry identifier), compound name, journal and digital object
 identifier (DOI). Exporting this metadata requires a licence from the Cambridge Crystallographic
-Data Centre (CCDC), so it is not included in this repository.
+Data Centre (CCDC), so it is not in this repository.
+
+To export it, first download and install the CSD data from the [CCDC downloads
+page](https://www.ccdc.cam.ac.uk/support-and-resources/csdsdownloads/). Then install the CSD
+Python API, which has its own environment because it pins older versions of NumPy, pandas and
+SciPy:
+
+```bash
+pixi install -e csd
+```
+
+Next, write your CCDC licence code to a file named `.env` at the repository root. The second line
+is needed only if the CCDC installer did not record the location of the CSD data in
+`~/.config/CCDC/CSD.ini`:
+
+```bash
+CCDC_LICENSING_CONFIGURATION=la-code;<your-licence-code>
+CSD_DATA_DIRECTORY=<folder of the CSD data>
+```
+
+Finally, export the metadata:
+
+```bash
+pixi run -e csd python scripts/runs/csd/s0_metadata.py
+```
 
 ### Build the corpus
 
-```bash
-pixi run snakemake -s scripts/Snakefile -n          # list what would run
-pixi run snakemake -s scripts/Snakefile -j1 all     # download, parse and plot
-```
-
-Alternatively, run the steps one at a time from the repository root:
+This command downloads the papers from PMC, converts them to Markdown and plots the figures of
+this README. The download takes several hours and about 200 GB of disk space. Rerunning an
+interrupted download resumes it.
 
 ```bash
-pixi run python scripts/runs/bib/s0_download.py     # papers from PMC -> data/papers/raw/
-pixi run python scripts/runs/bib/s1_parse.py        # Markdown -> data/papers/parsed/
-pixi run python scripts/analysis/s0_paper_plots.py  # plots -> results/papers/plots/
+pixi run snakemake -s scripts/Snakefile -j1 all
 ```
-
-The download takes several hours and about 200 GB of disk space. Rerunning an interrupted download
-resumes it. The [layout of `data/papers`](docs/project-organization.md) describes the output files.
 
 ### Extract the procedures
 
-The extraction script `src/dataset/extraction_stream.py` remains on the `data-extraction` branch
-until that branch is merged. Run the following commands from that branch. The script calls the
-model through a LiteLLM proxy and requires an API key:
+The extraction calls the model through a LiteLLM proxy and requires an API key. It writes
+`data/runs/<name>/extractions.parquet`, with one record per CSD entry. Rerunning a stopped run
+resumes it.
 
 ```bash
 export LITELLM_API_KEY=...
 pixi run python -m dataset.extraction_stream --sample 200 --run data/runs/pilot200   # a sample
-pixi run python -m dataset.extraction_stream --run data/runs/corpus                 # every paper
+pixi run python -m dataset.extraction_stream --run data/runs/corpus                  # every paper
 ```
-
-It writes `data/runs/<name>/extractions.parquet`, with one row per CSD entry and the columns
-described in [`docs/EXTRACTION_SCHEMA.md`](docs/EXTRACTION_SCHEMA.md).
 
 ### Website
 
+The website shows corpus statistics and the 293 entries of the CSD Drug Subset that are reported
+in open-access papers of Acta Crystallographica Section E. Each entry's page shows a 3D view of
+its unit cell (the repeating unit of a crystal), its molecule, its CSD metadata, its paper and its
+extracted record. To serve it at http://localhost:8000:
+
 ```bash
-pixi run web    # then open http://localhost:8010
+pixi run web --port 8000
 ```
 
-The website shows corpus statistics and the 293 entries of the CSD Drug Subset that are reported
-in open-access papers of Acta Crystallographica Section E (289 papers). Each entry's page shows a
-3D view of its unit cell (the repeating unit of a crystal), its molecule, its CSD metadata, its
-paper and its extracted record.
+The website reads only the tables in `src/viz/assets/`. Of these, only `stats.json` is in this
+repository, because the other tables hold CSD data. Building them requires the CSD metadata, the
+downloaded papers and the extracted records:
 
-The website reads only the tables in `src/viz/assets/`, so once they are built it runs without
-the CSD metadata or the downloaded papers. Only `stats.json` is in this repository; the other two
-tables hold CSD data, so they are not:
-
-- `entries.parquet`: one row per entry, with its refcode, CCDC number, DrugBank drugs, SMILES,
-  CIF, CSD metadata (such as formula, solvent, colour and temperature), the paper's DOI, PMCID,
-  title, authors and licence, and the paper's text as Markdown (only for the 284 papers under
-  CC BY; empty for the other 5).
-- `extractions.parquet`: one extracted record per entry, with the columns of
-  [`docs/EXTRACTION_SCHEMA.md`](docs/EXTRACTION_SCHEMA.md).
-- `stats.json`: the corpus statistics of the landing page.
-
-To build them from `data/` (which needs the CSD metadata and the papers), run
-`pixi run python scripts/runs/viz/s0_assets.py`.
-
-See [`docs/project-organization.md`](docs/project-organization.md) for the repository layout
-and [`scripts/README.md`](scripts/README.md) for the script order.
+```bash
+pixi run snakemake -s scripts/Snakefile -j1 assets
+```
 
 ## About TEXtal
 

@@ -227,10 +227,15 @@ CLAUDE.md
 .vscode
 .claude
 /data
-/results
 /src/viz/assets/*
 !/src/viz/assets/.gitkeep
 !/src/viz/assets/stats.json
 /logs
 /sandbox
 .snakemake
+
+# Local corpus, scratch notebooks and lockfile
+/papers
+/csd_papers.tar.gz
+/*.ipynb
+/uv.lock

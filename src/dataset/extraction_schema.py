@@ -1,6 +1,6 @@
 """Schema for LLM-extracted paper information, one row per CSD entry and run.
 
-Run `uv run python -m dataset.extraction_schema` to regenerate
+Run `pixi run python -m dataset.extraction_schema` to regenerate
 docs/EXTRACTION_SCHEMA.md, docs/EXTRACTION_SCHEMA.slack.txt and an empty
 docs/extraction_template.parquet.
 The conventions shared with colleagues are in NOTES below.
@@ -24,7 +24,7 @@ NOTES = [
 
 MATCH_CONFIDENCE = ["high", "medium", "low"]
 FILE_KINDS = ["main", "supplementary"]
-FILE_INPUTS = ["text", "pdf"]
+FILE_INPUTS = ["text", "mineru", "pdf", "md"]
 EXTRACTION_STATUSES = ["ok", "no_paper", "compound_not_found", "truncated", "refused", "failed"]
 
 # Columns read from the paper; evidence quotes must name one of these.
@@ -157,7 +157,7 @@ COLUMNS = [
         "source_files",
         pl.List(SOURCE_FILE),
         "Provenance",
-        "Files the model saw for this row: `name` (file name as downloaded), `kind` (`main` or `supplementary`) and `input` (sent as extracted `text` or as the `pdf`).",
+        "Files the model saw for this row: `name` (file name as downloaded), `kind` (`main` or `supplementary`) and `input` (sent as `text` extracted with PyMuPDF, as `mineru` text, as the `pdf`, or as `md` from the PMC corpus).",
     ),
     Column("model", pl.String, "Provenance", "Model ID used for extraction."),
     Column(

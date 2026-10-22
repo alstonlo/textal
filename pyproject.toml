@@ -7,6 +7,7 @@ dependencies = [
     "openai>=2",
     "polars>=2.0.0",
     "pymupdf4llm<1",
+    "pymupdf>=1.26,<2",
     "tqdm>=4.70.1,<5",
 ]
 
@@ -32,7 +33,7 @@ pandoc = ">=3.12.1,<4"
 matplotlib = ">=3.10,<4"
 seaborn = ">=0.13,<0.14"
 snakemake = ">=9,<10"
-numpy = ">=2.3,<2.4"
+numpy = ">=2.2,<2.4"
 pillow = "<13"
 fastapi = ">=0.156.4,<0.157"
 uvicorn = ">=0.54.0,<0.55"
@@ -52,11 +53,27 @@ poppler = "*"
 [tool.pixi.feature.ocr.pypi-dependencies]
 mineru = { version = ">=4.0.12,<5", extras = ["full"] }
 
+# The CSD Python API pins older numpy, pandas and scipy, so it lives in its own environment too:
+# `pixi run -e csd ...`. It needs a CCDC licence (see the README).
+[tool.pixi.feature.csd.dependencies]
+python-dotenv = ">=1,<2"
+numpy = "<2.3"
+pandas = "<2.3"
+scipy = "<1.15"
+
+[tool.pixi.feature.csd.pypi-dependencies]
+# 3.8 fails to import under the conda Python: it cannot find `libpython3.so`.
+csd-python-api = ">=3.7,<3.8"
+
+[tool.pixi.feature.csd.pypi-options]
+extra-index-urls = ["https://pip.ccdc.cam.ac.uk/"]
+
 [tool.pixi.environments]
 ocr = ["ocr"]
+csd = ["csd"]
 
 [tool.pixi.tasks]
-web = "uvicorn viz.app:app --reload --port 8010"
+web = "uvicorn viz.app:app --reload"
 
 [tool.ruff]
 target-version = "py312"
