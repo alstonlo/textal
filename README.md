@@ -111,30 +111,31 @@ pixi run snakemake -s scripts/Snakefile -j1 assets
 
 ## About TEXtal
 
-The Cambridge Structural Database (CSD) holds 1.4 million crystal structures, but does not
-systematically record how the crystals were grown. Those procedures are described in the papers.
-We built TEXtal, an open pipeline that downloads the 54,961 open-access CSD papers from
-PubMed Central (PMC), converts them to Markdown,
-and uses a large language model (LLM) to write a record for each CSD entry: how the compound was
-made and how its crystals were grown, backed by quotes from the paper. These records can train
-models for text-conditioned crystal structure prediction (CSP) and for condition generation.
-In a pilot of 200 random
-papers, it returned a record for all 437 CSD entries in under 3 minutes. In a separate pilot of
-10 papers, our manual check found that all 23 CSD entries were matched to the right compound.
+The Cambridge Structural Database (CSD) holds 1.4 million crystal structures, but it does not
+systematically record how the crystals were grown; those procedures are described in the papers.
+TEXtal is an open pipeline that downloads the 54,961 open-access CSD papers from PubMed Central
+(PMC), converts them to Markdown, and uses a large language model (LLM) to write a record for
+each CSD entry: how the compound was made and how its crystals were grown, backed by verbatim
+quotes from the paper. These records can train models for text-conditioned crystal structure
+prediction (CSP) and for condition generation.
+
+In a first run, stopped before it finished, we extracted records for **51,300 CSD entries from
+32,792 papers**, including 26,281 papers of Acta Crystallographica Section E, in about six
+hours. The model found the compound for 99.4% of the entries and rated 97.9% of its matches high
+confidence; 88% of the records describe how the crystals were grown.
 
 ### Why
 
 CSP models such as [Clari](https://github.com/the-matter-lab/clari) predict how a molecule packs
 into a crystal from the molecule alone. But the same molecule can form different crystals
-(polymorphs, solvates or salts) depending on how it is crystallized, and these models cannot
-take the crystallization procedure as input. They also cannot say which solvent, method and
-temperature produce a given crystal. Both tasks need crystallization procedures linked to crystal
-structures. In text-conditioned CSP, a model predicts the crystal from the molecule and a
-written procedure; in condition generation, a model predicts the procedure from the target
-crystal. The CSD has a
-`solvent` field, but it holds a single string with no method, temperature or time, and it is empty
-for 84% of entries. We found no public dataset that links small-molecule crystallization
-procedures to CSD entries.
+(polymorphs, solvates or salts) depending on how it is crystallized, and these models can neither
+take the crystallization procedure as input nor say which solvent, method and temperature produce
+a given crystal. Two tasks address this: in text-conditioned CSP, a model predicts the crystal
+from the molecule and a written procedure; in condition generation, it predicts the procedure
+from the target crystal. Both need crystallization procedures linked to crystal structures. The
+CSD has a `solvent` field, but it holds a single string with no method, temperature or time, and
+it is empty for 84% of entries. We found no public dataset that links small-molecule
+crystallization procedures to CSD entries.
 
 ### Approach
 
@@ -149,14 +150,17 @@ procedures to CSD entries.
    which reads their embedded text. Scanned supplementary PDFs, present in 1.6% of papers,
    require OCR with MinerU, which we have not run yet.
 4. **Extract.** We send one LLM request per paper, with the paper's Markdown and a table of its
-   CSD entries, including refcode, CCDC number, name and formula. For each entry, the model names the
-   compound in the paper and rates its confidence in that match as high, medium or low. It then
-   writes one short paragraph per topic: synthesis; crystallization; characterization; solid form
-   (such as a salt or hydrate); and purpose and properties. Every filled paragraph requires at
-   least one verbatim quote. We ask for paragraphs instead of fixed fields (such as solvent,
-   method and temperature) because we do not know in advance what the papers report; the fixed
-   fields can be derived from the paragraphs later.
-5. **Show.** We built a website to browse the corpus and the records of the CSD Drug Subset.
+   CSD entries, including refcode, CCDC number, name and formula. For each entry, the model
+   names the compound in the paper and rates its confidence in that match as high, medium or
+   low. It then writes one short paragraph per topic: synthesis; crystallization;
+   characterization; solid form (such as a salt or hydrate); and purpose and properties. Every
+   filled paragraph requires at least one verbatim quote. We ask for paragraphs instead of fixed
+   fields (such as solvent, method and temperature) because we do not know in advance what the
+   papers report; the fixed fields can be derived from the paragraphs later. Acta E papers,
+   which report one structure each, use `gpt-5.6-luna` with a prompt anchored on that journal's
+   layout; all other papers use `gpt-6-luna`. Both run at reasoning effort `high`.
+5. **Show.** A website shows corpus statistics and, for the CSD Drug Subset, each entry's
+   unit cell, molecule, paper and extracted record.
 
 <div align="center"><figure>
 <img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
@@ -173,16 +177,17 @@ supplies 41% of the corpus; since 2015, most papers come from general chemistry 
   (3.5 GB). Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can
   be shared. Two thirds of the papers report a single CSD entry, which makes the match between
   paper and entry easy.
-- **Pilot of 10 papers.** In our manual check, the model matched all 23 CSD entries to the right
-  compound: 18 through the CCDC number printed next to the compound's label (such as "3a"), 5
-  through the paper's description. Of the 337 quotes, 27 differed from the paper, mostly in
-  hyphenation or letter case; one had a changed word.
-- **Pilot of 200 random papers.** The model returned records for all 200 papers, covering 437
-  CSD entries. The run took 161 s with all requests in parallel (median 42 s per paper) and used
-  4.9 million input and 1.4 million output tokens. The model rated 411 matches high
-  confidence, 23 medium and 3 low.
-- **Drug subset in Acta Crystallographica Section E.** The model returned a record for all 293
-  entries of the CSD Drug Subset in 289 Acta E papers, and rated every match high confidence.
+- **Extraction run.** We extracted 51,300 CSD entries from 32,792 papers: 27,273 entries from
+  26,281 Acta E papers, and 24,027 entries from 6,511 papers in other journals; 4,481 papers
+  also used their supplementary documents. The model wrote a record for 50,983 entries (99.4%);
+  for 280 it could not find the compound in the paper, 36 requests failed and 1 paper was
+  missing. It rated 50,002 matches high confidence, 779 medium and 305 low. Of the records,
+  97% describe the synthesis, 88% the crystallization, 63% the characterization, 48% the purpose
+  and properties and 44% the solid form; together they cite 556,022 quotes.
+- **Manual check of 10 papers.** The model matched all 23 CSD entries to the right compound:
+  18 through the CCDC number printed next to the compound's label (such as "3a"), 5 through the
+  paper's description. Of the 337 quotes, 27 differed from the paper, mostly in hyphenation or
+  letter case; one had a changed word.
 - **Reasoning effort.** At reasoning effort `high` (a setting for how long the model reasons
   before answering), the model gave the same matches and core paragraphs as at `max` and ran
   about 10 times faster, so we use `high`.
@@ -198,7 +203,7 @@ marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
 
 ### Next steps
 
-- Run the extraction over all 54,961 papers.
+- Extend the extraction to the rest of the 54,961 papers, and retry the 36 failed requests.
 - Check every quote against the source text automatically, and flag records whose quotes do
   not match.
 - Derive fixed fields (method, solvents, temperature, time) from the paragraphs, and compare the
