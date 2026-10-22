@@ -2,9 +2,7 @@
 
 # TEXtal
 
-**A dataset that pairs crystal structures with the crystallization procedures and outcomes
-reported in their papers, for text-conditioned crystal structure prediction and
-crystallization condition generation.**
+**A dataset of crystal structures paired with text-mined crystallization procedures and outcomes.**
 
 <img src="docs/assets/record.png" width="800" alt="Crystal structure beside procedure fields and supporting quotes">
 
