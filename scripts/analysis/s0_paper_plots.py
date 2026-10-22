@@ -19,7 +19,7 @@ def main(
 ):
     """Plots the CSD papers in PMC, from `<papers>/metadata.parquet` and `parsed.parquet`.
 
-    Writes `<out>/<plot>.png` and `.pdf` for each plot in `PLOTS`: the `top` journals by papers,
+    Writes `<out>/<plot>.png` for each plot in `PLOTS`: the `top` journals by papers,
     the share of papers with 1, 2, 3 and 4+ CSD entries, the papers per year since `first_year`
     stacked by journal, the licences and files of the downloaded papers, and the length of the
     Markdown of each paper and supplementary file.
