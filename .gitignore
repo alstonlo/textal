@@ -229,3 +229,9 @@ CLAUDE.md
 /data
 /logs
 /sandbox
+
+# Local corpus, scratch notebooks and lockfile
+/papers
+/csd_papers.tar.gz
+/*.ipynb
+/uv.lock
