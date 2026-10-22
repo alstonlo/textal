@@ -5,7 +5,7 @@ paper, with the paper's PDFs attached or their text in the message. Jobs come fr
 `dataset.extraction_prompt`.
 
 Usage:
-    uv run python -m dataset.extraction_agent [JOB.json ...] [--model M] [--effort E]
+    pixi run python -m dataset.extraction_agent [JOB.json ...] [--model M] [--effort E]
         [--workers N] [--out FILE]
 
 Needs LITELLM_API_KEY in the environment; LITELLM_BASE_URL overrides the proxy URL.

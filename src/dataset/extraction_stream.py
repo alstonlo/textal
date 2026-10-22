@@ -13,7 +13,7 @@ runner stops starting papers, lets those in flight finish and exits with status 
 `scripts/run_extraction.sh` restarts it until every paper is done.
 
 Usage:
-    uv run python -m dataset.extraction_stream [--sample N] [--seed S] [--concurrency C]
+    pixi run python -m dataset.extraction_stream [--sample N] [--seed S] [--concurrency C]
         [--model M] [--effort E] [--run DIR]
 """
 

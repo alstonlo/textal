@@ -8,7 +8,7 @@ with PyMuPDF, `--input mineru` reads MinerU's parse from data/mineru/ (run
 provenance columns itself.
 
 Usage:
-    uv run python -m dataset.extraction_prompt [--doi DOI] [--input pdf|text|mineru]
+    pixi run python -m dataset.extraction_prompt [--doi DOI] [--input pdf|text|mineru]
         [--out DIR]
 """
 

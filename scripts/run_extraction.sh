@@ -19,7 +19,7 @@ attempt=0
 while true; do
     attempt=$((attempt + 1))
     echo "=== start $attempt at $(date -u +%FT%TZ)" >>"$log"
-    uv run python -m dataset.extraction_stream --run "$run" "$@" >>"$log" 2>&1
+    pixi run python -m dataset.extraction_stream --run "$run" "$@" >>"$log" 2>&1
     status=$?
     echo "=== exit $status at $(date -u +%FT%TZ)" >>"$log"
     case $status in

@@ -1,6 +1,6 @@
 """Schema for LLM-extracted paper information, one row per CSD entry and run.
 
-Run `uv run python -m dataset.extraction_schema` to regenerate
+Run `pixi run python -m dataset.extraction_schema` to regenerate
 docs/EXTRACTION_SCHEMA.md, docs/EXTRACTION_SCHEMA.slack.txt and an empty
 docs/extraction_template.parquet.
 The conventions shared with colleagues are in NOTES below.
