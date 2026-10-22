@@ -19,7 +19,7 @@ crystal that a molecule forms under a written procedure, and condition generatio
 predicts a procedure that yields a given crystal.
 
 **The extraction is not finished.** The hackathon ended before the model had read every paper:
-the records cover 28,960 of the 55,001 papers (53%): 85% of the Acta E collection, three other
+the records cover 28,920 of the 54,961 papers (53%): 85% of the Acta E collection, three other
 journals in full and a fourth half-way. The rest of the corpus is downloaded and converted, and the
 extraction resumes where it stopped. Every statistic below says which part of the corpus it
 describes.
@@ -100,10 +100,9 @@ the CCDC numbers printed in it. This collection was made on a cluster with the s
 branch (`scripts/iucr_archive/`), which are tied to that machine's paths and are not part of
 this branch. Its result is one table, `data/viz/acta-e-papers.jsonl.gz`, with one line per paper
 (its identifiers, licence, the paragraphs of its experimental sections and its CSD refcodes).
-Of its 27,266 papers, 27,226 are also in the PMC download; the other 40 cite a DOI that the CSD
-does not record, so the CSD-driven download never asked PMC for them. The corpus is the union
-of the two collections: the 54,961 papers found through the CSD's DOIs plus those 40, for 55,001
-papers, all from PMC. Every count below is over this union.
+The corpus is the PMC download, 54,961 papers, and every count below is over it. 27,226 of the
+collection's 27,266 papers are in it; the other 40 cite a DOI that no CSD entry records, so they
+are left out.
 
 ### Extract the procedures
 
@@ -155,15 +154,15 @@ pixi run snakemake -s scripts/Snakefile -j1 assets
 
 The Cambridge Structural Database (CSD) holds 1.4 million crystal structures, but it does not
 systematically record how the crystals were grown; those procedures are described in the papers.
-TEXtal is an open pipeline that downloads the 55,001 open-access CSD papers that are in PubMed
-Central (PMC), 27,266 of them from Acta E, converts them to Markdown, and uses a large language
+TEXtal is an open pipeline that downloads the 54,961 open-access CSD papers that are in PubMed
+Central (PMC), 27,226 of them from Acta E, converts them to Markdown, and uses a large language
 model (LLM) to write a record for each CSD entry: how the compound was made and how its crystals
 were grown, backed by quotes from the paper. These records can train models for text-conditioned
 crystal structure prediction (CSP) and for condition generation.
 
 Because of the time limit of the hackathon, the extraction covers about half of the corpus:
-**45,106 CSD entries from 28,960 papers**, extracted in about six hours. The model found the
-compound for 99.5% of the entries and rated 97.9% of its matches high confidence; 87% of the
+**45,066 CSD entries from 28,920 papers**, extracted in about six hours. The model found the
+compound for 99.5% of the entries and rated 98% of its matches high confidence; 87% of the
 records describe how the crystals were grown.
 
 ### Why
@@ -184,12 +183,11 @@ crystallization procedures to CSD entries.
 1. **Find the papers.** The CSD entries cite 554,956 unique DOIs. Of these, 56,225 are in PMC's
    DOI list, covering 121,147 CSD entries. Most publisher sites block automated downloads,
    but PMC's open-access storage bucket on Amazon Web Services (AWS) allows them. For Acta E, we
-   started from the publisher's own list of open-access papers instead, which also finds the
-   papers whose DOI the CSD does not record (40), and lets us keep the original CIFs and
-   chemical schemes.
-2. **Download.** The bucket contained 54,961 of the CSD's papers (203 GB); the Acta E collection
-   adds 40, for 55,001 papers. Every paper has its full text as XML; 89% also have a PDF and 35%
-   have supplementary documents. We check every file against PMC's checksum.
+   started from the publisher's own list of open-access papers instead, which lets us keep the
+   original CIFs and chemical schemes.
+2. **Download.** The bucket contained 54,961 of the CSD's papers (203 GB). Every paper has its
+   full text as XML; 89% also have a PDF and 35% have supplementary documents. We check every
+   file against PMC's checksum.
 3. **Convert to Markdown.** Because the main text comes as XML, it needs no optical character
    recognition (OCR); we convert it with pandoc. We convert supplementary PDFs with PyMuPDF4LLM,
    which reads their embedded text. Scanned supplementary PDFs, present in 1.6% of papers,
@@ -212,7 +210,7 @@ crystallization procedures to CSD entries.
 <div align="center"><figure>
 <img src="assets/years.png" width="700" alt="Papers by year and journal">
 <figcaption>
-<strong>Figure 1.</strong> The 55,001 papers of the corpus by publication year, with colors
+<strong>Figure 1.</strong> The 54,961 papers of the corpus by publication year, with colors
 indicating journals. Acta E, a journal that publishes one structure per paper, supplies half of
 the corpus and nearly all of it before 2013; since 2015, most papers come from general chemistry
 journals.
@@ -221,24 +219,24 @@ journals.
 
 ### Results
 
-- **The corpus.** The corpus has 55,001 papers and 23,215 supplementary documents in Markdown
+- **The corpus.** The corpus has 54,961 papers and 23,215 supplementary documents in Markdown
   (3.5 GB). Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can
   be shared. Two thirds of the papers report a single CSD entry, which makes the match between
   paper and entry easy.
-- **Extraction, incomplete.** We extracted 45,106 CSD entries from 28,960 papers, 53% of the
-  corpus (Figure 2): 23,460 entries from 23,117 Acta E papers (85% of Acta E), and 21,646
+- **Extraction, incomplete.** We extracted 45,066 CSD entries from 28,920 papers, 53% of the
+  corpus (Figure 2): 23,420 entries from 23,077 Acta E papers (85% of Acta E), and 21,646
   entries from 5,843 papers in other journals (21% of them; Angewandte Chemie, Chemistry: A
   European Journal and Crystal Growth & Design in full, Inorganic Chemistry half-way). The model
-  wrote a record for 44,866 entries (99.5%); for 212 it could not find the compound in the paper,
-  27 requests failed and 1 paper was missing. It rated 43,973 matches high confidence, 695
+  wrote a record for 44,826 entries (99.5%); for 212 it could not find the compound in the paper,
+  27 requests failed and 1 paper was missing. It rated 43,933 matches high confidence, 695
   medium and 245 low.
-- **The records.** Of the 44,866 records, 97% describe the synthesis, 87% the crystallization,
+- **The records.** Of the 44,826 records, 97% describe the synthesis, 87% the crystallization,
   62% the characterization, 46% the purpose and properties and 42% the solid form (Figure 3).
   The two runs differ: read from the experimental sections only, the Acta E records nearly
   always have the synthesis and crystallization (99% and 97%) and rarely the rest; read from the
   full text, the other journals' records have more characterization and purpose (89% and 87%)
   but less crystallization (77%), because those papers do not always say how the measured
-  crystals were grown. Of the 39,122 entries with a crystallization paragraph, 27,798 (71%) have
+  crystals were grown. Of the 39,082 entries with a crystallization paragraph, 27,758 (71%) have
   an empty `solvent` field in the CSD.
 - **Manual check of 10 papers.** The model matched all 23 CSD entries to the right compound:
   18 through the CCDC number printed next to the compound's label (such as "3a"), 5 through the

@@ -60,7 +60,6 @@ rule plot_papers:
     input:
         f"{PAPERS}/metadata.parquet",
         f"{PAPERS}/parsed.parquet",
-        f"{ASSETS}/publisher_papers.parquet",
     output:
         expand("assets/{plot}.png", plot=PLOTS),
     shell:

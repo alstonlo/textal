@@ -14,7 +14,6 @@ PLOTS = ["years", "downloads"]
 
 def main(
     papers: str = str(DATA_DIR / "papers"),
-    acta_e: str = str(REPO_ROOT / "src" / "viz" / "assets" / "publisher_papers.parquet"),
     out: str = str(REPO_ROOT / "assets"),
     first_year: int = 2000,
 ):
@@ -25,7 +24,6 @@ def main(
 
     Args:
         papers: The papers folder, with `metadata.parquet`, `parsed.parquet` and `raw/`.
-        acta_e: The papers table of the Acta E collection (one row per paper).
         out: The folder to write the figures to.
         first_year: The first year of the papers-per-year figure.
     """
@@ -36,13 +34,8 @@ def main(
     theme.apply()
 
     # Papers per year, stacked by the five largest journals. Years before `first_year` have a
-    # handful of papers each, so they are left out. The Acta E collection adds the few Acta E
-    # papers whose DOI the CSD does not record, so they are not in `metadata.parquet`.
-    extra = pl.read_parquet(acta_e, columns=["doi", "year"])
-    extra = extra.filter(~pl.col("doi").is_in(meta["doi"].implode()))
-    all_papers = pl.concat(
-        [meta.select("journal", "year"), extra.select(journal=pl.lit(ACTA_E), year="year")]
-    ).with_columns(merge_acta_e(pl.col("journal")))
+    # handful of papers each, so they are left out.
+    all_papers = meta.select(merge_acta_e(pl.col("journal")), "year")
     journals = all_papers.group_by("journal").len("papers")
     top5 = journals.sort("papers", "journal", descending=True).head(5)["journal"].to_list()
     abbrevs = nlm_abbrevs(meta, [j for j in top5 if j != ACTA_E], papers / "raw")
