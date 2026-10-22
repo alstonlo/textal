@@ -1,4 +1,3 @@
-import json
 import math
 import re
 
@@ -74,12 +73,13 @@ def cif_loop(cif: str, tag: str) -> list[list[str]]:
     return []
 
 
-def parse_structure(cif: str) -> tuple[list[str], np.ndarray, np.ndarray]:
+def parse_structure(cif: str) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray]:
     """Reads the atoms of a CSD CIF and fills the unit cell with its symmetry operators.
 
     Returns:
-        The element symbols, the fractional coordinates (n, 3) of every atom in the cell, and
-        the lattice matrix (3, 3) whose rows are the lattice vectors.
+        The element symbols, the fractional coordinates (n, 3) of every atom in the cell, the
+        lattice matrix (3, 3) whose rows are the lattice vectors, and the index (n,) of the
+        molecule each atom belongs to.
     """
     cell = []
     for tag in ("a", "b", "c", "alpha", "beta", "gamma"):
@@ -107,15 +107,21 @@ def parse_structure(cif: str) -> tuple[list[str], np.ndarray, np.ndarray]:
     dist = np.linalg.norm(cart[:, None] - cart[None], axis=-1)
     keep = ~np.triu(dist < 0.1, k=1).any(axis=0)
     elems_all = [e for e, k in zip(elems_all, keep, strict=True) if k]
-    return elems_all, whole_molecules(elems_all, frac_all[keep], lattice), lattice
+    frac, mols = whole_molecules(elems_all, frac_all[keep], lattice)
+    return elems_all, frac, lattice, mols
 
 
-def whole_molecules(elems: list[str], frac: np.ndarray, lattice: np.ndarray) -> np.ndarray:
+def whole_molecules(
+    elems: list[str], frac: np.ndarray, lattice: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
     """Moves atoms by lattice vectors so that bonded atoms sit next to each other.
 
     Wrapping every atom into the cell on its own cuts molecules at the cell faces. Here bonds are
     found under the minimum-image convention, each connected set of atoms is unwrapped along its
     bonds, and the whole set is then shifted so that its centre lies inside the cell.
+
+    Returns:
+        The moved fractional coordinates (n, 3), and the index (n,) of each atom's molecule.
     """
     diff = frac[:, None] - frac[None]
     shift = np.round(diff)
@@ -124,6 +130,7 @@ def whole_molecules(elems: list[str], frac: np.ndarray, lattice: np.ndarray) -> 
     bonded = (dist < 1.15 * (radii[:, None] + radii[None])) & (dist > 0.4)
 
     offset = np.zeros_like(frac)
+    mols = np.full(len(frac), -1)
     seen = np.zeros(len(frac), dtype=bool)
     for start in range(len(frac)):
         if seen[start]:
@@ -139,7 +146,8 @@ def whole_molecules(elems: list[str], frac: np.ndarray, lattice: np.ndarray) -> 
                 queue.append(j)
         centre = (frac[group] + offset[group]).mean(axis=0)
         offset[group] -= np.floor(centre)
-    return frac + offset
+        mols[group] = mols.max() + 1
+    return frac + offset, mols
 
 
 # A fixed oblique view: the cell is tilted so that all three axes read as a box.
@@ -158,7 +166,7 @@ def draw_cell(cif: str, size: int = 240, ink: str = "#111111") -> str:
     Hydrogens are left out and carbons are small dots, so the drawing stays legible at thumbnail
     size and reads as a specimen on a coloured tile.
     """
-    elems, frac, lattice = parse_structure(cif)
+    elems, frac, lattice, _ = parse_structure(cif)
     heavy = [i for i, e in enumerate(elems) if e != "H"]
     elems = [elems[i] for i in heavy]
     cart = (frac[heavy] @ lattice) @ VIEW.T
@@ -200,27 +208,44 @@ def point(p) -> dict:
     return dict(zip("xyz", np.asarray(p).tolist(), strict=True))
 
 
-def draw_crystal(cif: str, lattice: np.ndarray, background: str, height: int = 560) -> str:
-    """Draws a CSD CIF with py3Dmol, filling the unit cell by its symmetry operators.
+def draw_crystal(cif: str, background: str, height: int = 560) -> str:
+    """Draws a CSD CIF with py3Dmol: the filled unit cell, and the molecules around it.
 
     The look follows `clari.chem.draw.draw_crystal`: sticks and small spheres, the cell as thin
-    cylinders, and the lattice vectors as red, green and blue arrows from the origin.
+    cylinders, and the lattice vectors as red, green and blue arrows from the origin. Atoms come
+    from `parse_structure`, so molecules are whole, as in the thumbnails. The surrounding
+    molecules are those of the 26 neighbouring cells whose centre lies within half a cell of the
+    unit cell, i.e. in [-0.5, 1.5] along each axis; they are a second, faint model that the page
+    shows on demand (see `entry.js`).
 
     Returns:
         The HTML of the viewer (a div and the script that fills it), to be inlined in a page.
     """
+    elems, frac, lattice, mols = parse_structure(cif)
+    shifts = np.asarray([s for s in np.ndindex(3, 3, 3) if s != (1, 1, 1)]) - 1
+    centres = np.stack([frac[mols == m].mean(axis=0) for m in range(mols.max() + 1)])
+    near = centres[None] + shifts[:, None]
+    near = ((near >= -0.5) & (near <= 1.5)).all(axis=-1)[:, mols]  # (26, n)
+    shell = (frac[None] + shifts[:, None])[near]
+    shell_elems = np.asarray(elems)[np.nonzero(near)[1]].tolist()
+
     view = py3Dmol.view(width="100%", height=height)
     view.setBackgroundColor(background)
-    view.addModel(
-        cif, "cif", {"doAssembly": True, "duplicateAssemblyAtoms": True, "normalizeAssembly": True}
-    )
     scheme = {"prop": "elem", "map": VIEWER_COLOURS}
-    view.setStyle(
-        {
-            "stick": {"radius": 0.2, "colorscheme": scheme},
-            "sphere": {"scale": 0.2, "colorscheme": scheme},
-        }
-    )
+    for model, (names, xyz) in enumerate([(elems, frac), (shell_elems, shell)]):
+        lines = [
+            f"{e} {x:.4f} {y:.4f} {z:.4f}"
+            for e, (x, y, z) in zip(names, xyz @ lattice, strict=True)
+        ]
+        view.addModel(f"{len(lines)}\n\n" + "\n".join(lines), "xyz")
+        opacity = 1.0 if (model == 0) else 0.4
+        view.setStyle(
+            {"model": model},
+            {
+                "stick": {"radius": 0.2, "colorscheme": scheme, "opacity": opacity},
+                "sphere": {"scale": 0.2, "colorscheme": scheme, "opacity": opacity},
+            },
+        )
 
     origin = np.zeros(3)
     for vec, color in zip(lattice, ["red", "green", "blue"], strict=True):
@@ -236,7 +261,5 @@ def draw_crystal(cif: str, lattice: np.ndarray, background: str, height: int = 5
         )
     for e in UNIT_CUBE_EDGES @ lattice:
         view.addCylinder({"start": point(e[0]), "end": point(e[1]), "radius": 0.05})
-    view.zoomTo()
-    html = view._make_html()
-    assert json.dumps(cif)[1:-1] in html, "py3Dmol did not inline the CIF as expected"
-    return html
+    view.zoomTo({"model": 0})
+    return view._make_html()

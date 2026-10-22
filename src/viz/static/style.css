@@ -12,6 +12,7 @@
   --bar: #394287;
   --bar-light: #ACBCE4;
   --bar-warm: #AF5763;
+  --bar-other: #B3B3B3;
   --font: Inter, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
   --width: 1120px;
   --margin: clamp(20px, 4vw, 48px);
@@ -54,7 +55,8 @@ main section, .bar, footer { max-width: var(--width); margin: 0 auto; padding-le
 .bar nav { display: flex; gap: 28px; color: var(--muted); }
 .bar nav a:hover { color: var(--ink); }
 .bar nav a[aria-current] { color: var(--accent); }
-footer { padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 24px; padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+footer a:hover { color: var(--accent); }
 
 /* Homepage */
 .hero { padding-top: 112px; padding-bottom: 72px; }
@@ -75,9 +77,12 @@ footer { padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top:
 .block { margin-top: 120px; padding-top: 32px; border-top: 1px solid var(--line); }
 .block > .muted { margin-top: 12px; }
 .charts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 48px; margin-top: 48px; }
-.charts figure { margin: 0; min-width: 0; }
-.charts figcaption { font-size: 14px; margin-bottom: 12px; }
+/* Captions in a row share one height (subgrid), so the two plots of a row line up. */
+.charts figure { display: grid; grid-template-rows: subgrid; grid-template-columns: minmax(0, 1fr); grid-row: span 2; gap: 12px; margin: 0; min-width: 0; }
+.charts figcaption { font-size: 14px; }
+.key::before { content: ""; display: inline-block; width: 10px; height: 10px; margin: 0 6px 0 2px; border-radius: 2px; background: var(--key); vertical-align: -1px; }
 .plot { width: 100%; height: 300px; }
+.plot.tall { height: 480px; }
 @media (max-width: 900px) {
   .hero { padding-top: 64px; }
   .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -113,10 +118,12 @@ footer { padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top:
 /* Entry */
 .back { display: inline-block; font-size: 14px; margin-bottom: 24px; }
 .back:hover { color: var(--accent); }
-.facts { margin-top: 16px; }
+.facts { margin-top: 16px; max-width: none; }
 .viewer { margin-top: 40px; }
-.viewer > div { width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-.viewer .small { margin-top: 10px; }
+.viewer > [id^="3dmolviewer_"] { width: 100%; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.viewer-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 24px; margin-top: 10px; }
+.viewer-foot p { max-width: none; }
+.viewer-foot .chip { font-size: 14px; }
 .entry-data { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 48px; margin-top: 48px; align-items: start; }
 .data { margin: 0; }
 .data div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 16px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 15px; }
@@ -126,16 +133,24 @@ footer { padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top:
 .molecule { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 3; background: var(--soft); border-radius: 12px; padding: 24px; }
 .molecule svg { width: 100%; height: 100%; }
 .record-section { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 64px; margin-top: 120px; padding-top: 32px; border-top: 1px solid var(--line); }
-.record > .muted { margin-top: 12px; }
-.field { margin-top: 28px; }
-.field p { margin-top: 4px; }
+.record-lead { margin-top: 16px; }
+.record-match { margin-top: 12px; }
+.record-fields { margin: 32px 0 24px; }
+.record-fields div { padding: 20px 0; border-top: 1px solid var(--line); }
+.record-fields dt { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; }
+.record-fields dd { margin: 6px 0 0; font-size: 15px; }
+.record-fields summary { width: fit-content; margin-top: 8px; font-size: 13px; color: var(--accent); cursor: pointer; }
+/* The quote's rule is the colour of its highlight in the paper; a found quote scrolls to it. */
+.record-fields blockquote { margin: 10px 0 0; padding-left: 12px; border-left: 3px solid #FAE69E; font-size: 14px; color: var(--muted); }
+.record-fields blockquote.found { cursor: pointer; }
+.record-fields blockquote.found:hover { color: var(--ink); }
 .paper-title { margin-top: 16px; font-weight: 500; font-size: 18px; line-height: 1.35; }
 .paper-text { margin-top: 24px; padding: 20px 24px; max-height: 720px; overflow: auto; border: 1px solid var(--line); border-radius: 12px; font-size: 14px; line-height: 1.55; }
-.paper-text h1, .paper-text h2, .paper-text h3 { font-size: 14px; font-weight: 600; letter-spacing: 0; margin: 20px 0 6px; }
+.paper-text h1, .paper-text h2, .paper-text h3 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin: 24px 0 6px; }
 .paper-text p, .paper-text li { margin: 0 0 10px; max-width: none; }
 .paper-text table { border-collapse: collapse; font-size: 12px; margin: 0 0 12px; display: block; overflow-x: auto; }
 .paper-text td, .paper-text th { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
-.paper-text mark { background: #FAE69E; color: var(--ink); }
+.paper-text mark, .paper-text .quoted { background: #FAE69E; color: var(--ink); }
 @media (max-width: 900px) {
   .entry-data, .record-section { grid-template-columns: minmax(0, 1fr); gap: 40px; }
   .record-section { margin-top: 72px; }

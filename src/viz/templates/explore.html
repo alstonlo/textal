@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% set active = "explore" %}
-{% block title %}Explorer, csd-textal{% endblock %}
+{% block title %}Explorer{% endblock %}
 {% block body %}
 <section class="page-head">
   <h1>Drug crystals</h1>
-  <p class="muted">As a demo, we process {{ counts.drug_entries }} crystals from the CSD Drug Subset with open paper access. Each tile is the filled unit cell at the same scale and angle.</p>
+  <p class="muted">As a demo, we process the {{ counts.drug_entries }} crystals of the CSD Drug Subset that are reported in {{ counts.drug_papers }} open-access papers of Acta Crystallographica Section E. Each tile is the filled unit cell at the same scale and angle.</p>
 </section>
 <section class="tools">
   <label class="sr-only" for="q">Search</label>

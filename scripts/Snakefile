@@ -1,5 +1,6 @@
 # The chain from the CSD metadata to the plots: the open-access papers of the CSD entries,
-# downloaded from PubMed Central (PMC), then parsed to Markdown, then plotted.
+# downloaded from PubMed Central (PMC), then parsed to Markdown, then plotted. The tables of the
+# website (`assets`) are not part of `all`, since their inputs in `data/viz/` are made by hand.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -49,3 +50,18 @@ rule plot_papers:
         expand("results/papers/plots/{plot}.png", plot=PLOTS),
     shell:
         "python scripts/analysis/s0_paper_plots.py"
+
+
+rule assets:
+    input:
+        "data/raw/csd_metadata.full.parquet",
+        f"{PAPERS}/metadata.parquet",
+        f"{PAPERS}/parsed.parquet",
+        "data/viz/csd_drugs_with_paper.parquet",
+        "data/viz/priority-extractions.parquet",
+    output:
+        "src/viz/assets/entries.parquet",
+        "src/viz/assets/extractions.parquet",
+        "src/viz/assets/stats.json",
+    shell:
+        "python scripts/runs/viz/s0_assets.py"

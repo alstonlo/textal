@@ -227,6 +227,8 @@ CLAUDE.md
 .vscode
 .claude
 /data
+/src/viz/assets/*
+!/src/viz/assets/.gitkeep
 /logs
 /sandbox
 .snakemake

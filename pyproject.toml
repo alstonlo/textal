@@ -56,7 +56,7 @@ mineru = { version = ">=4.0.12,<5", extras = ["full"] }
 ocr = ["ocr"]
 
 [tool.pixi.tasks]
-web = "uvicorn viz.app:app --reload --port 8000"
+web = "uvicorn viz.app:app --reload --port 8010"
 
 [tool.ruff]
 target-version = "py312"

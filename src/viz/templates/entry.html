@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% set active = "explore" %}
 {% set x = e.extraction %}
-{% block title %}{{ e.name }} ({{ e.id }}), csd-textal{% endblock %}
+{% block title %}{{ e.name }} ({{ e.id }}){% endblock %}
 {% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>{% endblock %}
 {% block body %}
 <section class="page-head">
@@ -9,7 +9,7 @@
   <h1>{{ e.name }}</h1>
   <p class="muted">{{ e.chemical_name }}</p>
   <p class="facts">
-    {{ e.id }}, CCDC {{ e.ccdc_number }}{% for d in e.drugbank_ids %}, <a href="https://go.drugbank.com/drugs/{{ d }}">DrugBank {{ d }}</a>{% endfor %}.
+    <a href="https://www.ccdc.cam.ac.uk/structures/Search?Ccdcid={{ e.id }}&amp;DatabaseToSearch=Published">CSD {{ e.id }} (#{{ e.ccdc_number }})</a>{% for d in e.drugbank_ids %}, <a href="https://go.drugbank.com/drugs/{{ d }}">DrugBank {{ d }}</a>{% endfor %}.
     {% if e.forms %}{{ e.forms|join(" ")|capitalize }}.{% else %}Neat compound.{% endif %}
     {{ "Organic" if e.is_organic else "Organometallic" }}{% if e.polymorph %}, {{ e.polymorph }}{% endif %}.
   </p>
@@ -17,7 +17,10 @@
 
 <section class="viewer">
   {{ viewer|safe }}
-  <p class="muted small">Drag to rotate, scroll to zoom. The cell is drawn with its a, b and c axes in red, green and blue.</p>
+  <div class="viewer-foot">
+    <p class="muted small">Drag to rotate, scroll to zoom. The cell is drawn with its a, b and c axes in red, green and blue.</p>
+    <button class="chip" id="supercell" type="button" aria-pressed="false">Tile</button>
+  </div>
 </section>
 
 <section class="entry-data">
@@ -40,18 +43,30 @@
 <section class="record-section">
   <div class="record">
     <h2>What the paper says about this crystal</h2>
-    <p class="muted">{% if x %}Extraction status: {{ x.extraction_status }}{% if x.model %}, by {{ x.model }}, prompt {{ x.prompt_version }}, on {{ x.extracted_at }}{% endif %}.{% else %}Not extracted yet. These are the fields the record will hold, one paragraph each with its supporting quotes.{% endif %}</p>
-    {% for col in schema if col.group in ("Linking", "Paper content") %}
-    {% set v = x[col.name] if x else none %}
-    <div class="field">
-      <h3>{{ col.name|replace("_", " ")|capitalize }}</h3>
-      {% if v is none or v == "" or v == [] %}
-      <p class="muted small">{{ col.description|replace("`", "") }}</p>
-      {% elif v is string %}<p>{{ v }}</p>
-      {% else %}<p>{{ v|join(", ") }}</p>{% endif %}
-    </div>
-    {% endfor %}
-    {% if x and x.error %}<p class="muted">Error: {{ x.error }}</p>{% endif %}
+    {% if x.extraction_status != "ok" %}
+    <p class="muted">No record: {{ x.extraction_status|replace("_", " ") }}{% if x.error %} ({{ x.error }}){% endif %}.</p>
+    {% else %}
+    {% if x.summary %}<p class="record-lead">{{ x.summary }}</p>{% endif %}
+    <p class="muted small record-match">The paper calls it {{ x.compound_label }}. {{ x.match_confidence|capitalize }} confidence that this is the CSD entry: {{ x.match_basis }}</p>
+    <dl class="record-fields">
+      {% for name in fields if x[name] %}
+      {% set quotes = x.evidence|selectattr("field", "equalto", name)|list %}
+      <div>
+        <dt>{{ name|replace("_", " ")|capitalize }}</dt>
+        <dd>
+          <p>{{ x[name] }}</p>
+          {% if quotes %}
+          <details>
+            <summary>{{ quotes|length }} quote{% if quotes|length > 1 %}s{% endif %} from the paper</summary>
+            {% for q in quotes %}<blockquote>{{ q.quote }}</blockquote>{% endfor %}
+          </details>
+          {% endif %}
+        </dd>
+      </div>
+      {% endfor %}
+    </dl>
+    <p class="muted small">Extracted by {{ x.model }} (prompt {{ x.prompt_version }}) on {{ x.extracted_at.strftime("%-d %B %Y") }}.</p>
+    {% endif %}
   </div>
 
   <div class="paper">
@@ -59,9 +74,8 @@
     <p class="paper-title">{{ e.title or e.chemical_name }}</p>
     <p class="small">{{ e.authors }}</p>
     <p class="muted small">{{ e.journal }}{% if e.volume %}, {{ e.volume }}{% endif %}{% if e.first_page %}, {{ e.first_page }}{% endif %} ({{ e.year }}){% if e.license %}, {{ e.license }}{% endif %}.
-      <a href="https://doi.org/{{ e.doi }}">doi.org/{{ e.doi }}</a>{% if e.pmcid %}, <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ e.pmcid }}/">{{ e.pmcid }}</a>{% endif %}.
-      {% if supplementary %}Supplementary files: {{ supplementary|join(", ") }}.{% endif %}</p>
-    <div class="paper-text" id="paper-text">{% if not paper %}<p class="muted">The parsed paper is not available.</p>{% endif %}</div>
+      <a href="https://doi.org/{{ e.doi }}">doi.org/{{ e.doi }}</a>{% if e.pmcid %}, <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ e.pmcid }}/">{{ e.pmcid }}</a>{% endif %}.</p>
+    <div class="paper-text" id="paper-text">{% if not paper %}<p class="muted">The text of this paper is not shared here, as it is not under CC BY. Read it at the DOI above.</p>{% endif %}</div>
   </div>
 </section>
 {% endblock %}

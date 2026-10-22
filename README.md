@@ -76,12 +76,28 @@ described in [`docs/EXTRACTION_SCHEMA.md`](docs/EXTRACTION_SCHEMA.md).
 ### Website
 
 ```bash
-pixi run web    # then open http://localhost:8000
+pixi run web    # then open http://localhost:8010
 ```
 
-The website shows corpus statistics and the 361 entries of the CSD Drug Subset whose papers we
-downloaded. Each entry's page shows a 3D view of its unit cell (the repeating unit of a crystal),
-its molecule, its CSD metadata, its paper and its extracted record.
+The website shows corpus statistics and the 293 entries of the CSD Drug Subset that are reported
+in open-access papers of Acta Crystallographica Section E (289 papers). Each entry's page shows a
+3D view of its unit cell (the repeating unit of a crystal), its molecule, its CSD metadata, its
+paper and its extracted record.
+
+The website reads only the tables in `src/viz/assets/`, so once they are built it runs without
+the CSD metadata or the downloaded papers. The tables are not in this repository, since they hold
+CSD data:
+
+- `entries.parquet`: one row per entry, with its refcode, CCDC number, DrugBank drugs, SMILES,
+  CIF, CSD metadata (such as formula, solvent, colour and temperature), the paper's DOI, PMCID,
+  title, authors and licence, and the paper's text as Markdown (only for the 284 papers under
+  CC BY; empty for the other 5).
+- `extractions.parquet`: one extracted record per entry, with the columns of
+  [`docs/EXTRACTION_SCHEMA.md`](docs/EXTRACTION_SCHEMA.md).
+- `stats.json`: the corpus statistics of the landing page.
+
+To build them from `data/` (which needs the CSD metadata and the papers), run
+`pixi run python scripts/runs/viz/s0_assets.py`.
 
 See [`docs/project-organization.md`](docs/project-organization.md) for the repository layout
 and [`scripts/README.md`](scripts/README.md) for the script order.
@@ -158,6 +174,8 @@ supplies 41% of the corpus; since 2015, most papers come from general chemistry 
   CSD entries. The run took 161 s with all requests in parallel (median 42 s per paper) and used
   4.9 million input and 1.4 million output tokens. The model rated 411 matches high
   confidence, 23 medium and 3 low.
+- **Drug subset in Acta Crystallographica Section E.** The model returned a record for all 293
+  entries of the CSD Drug Subset in 289 Acta E papers, and rated every match high confidence.
 - **Reasoning effort.** At reasoning effort `high` (a setting for how long the model reasons
   before answering), the model gave the same matches and core paragraphs as at `max` and ran
   about 10 times faster, so we use `high`.
@@ -184,5 +202,6 @@ marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
 
 ## Licence
 
-The CSD metadata is licensed by the CCDC and is not redistributed here. Each paper keeps the
-licence given in its PMC record.
+The CSD metadata is licensed by the CCDC and is not redistributed here, nor are the website's
+tables built from it. Each paper keeps the licence given in its PMC record; the website shows the
+text of the CC BY papers only.
