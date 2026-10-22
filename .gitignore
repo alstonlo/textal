@@ -228,7 +228,6 @@ CLAUDE.md
 .claude
 /data
 /src/viz/assets/*
-!/src/viz/assets/.gitkeep
 !/src/viz/assets/stats.json
 /logs
 /sandbox
