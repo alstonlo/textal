@@ -5,9 +5,7 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 PAPER_DPI = 200
-RASTER_DPI = 450
 WIDTH = 5.5
-FORMATS = (".png", ".pdf")
 
 ROSEWOOD = ["#5B1932", "#87354B", "#AF5763", "#D38075"]
 BUTTER = ["#EEB089", "#FAE69E"]
@@ -22,9 +20,7 @@ SEQUENTIAL.set_bad("0.6")
 
 
 def save(fig, out: Path) -> None:
-    for suffix in FORMATS:
-        dpi = RASTER_DPI if (suffix == ".pdf") else PAPER_DPI
-        fig.savefig(Path(out).with_suffix(suffix), dpi=dpi)
+    fig.savefig(Path(out).with_suffix(".png"), dpi=PAPER_DPI)
 
 
 def apply() -> None:

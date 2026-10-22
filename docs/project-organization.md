@@ -7,7 +7,7 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `src/dataset/`: the Python package that builds the dataset: CCDC metadata, paper download, OCR and extraction.
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the
   report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes a
-  figure as PNG and PDF).
+  figure as PNG).
 - `scripts/`: the scripts, run from the repository root. [`Snakefile`](../scripts/Snakefile)
   names which script produces which file from which input, and runs them in order; see
   [`scripts/README.md`](../scripts/README.md).
@@ -42,8 +42,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
     `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
     finished, so a stopped run can resume.
-- `results/`: the plots, one folder per data folder they describe, e.g. `papers/plots/` for
-  `data/papers/`. The PNGs are tracked, the PDFs are not.
+- `results/`: the plots (PNG), one folder per data folder they describe, e.g. `papers/plots/`
+  for `data/papers/`.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 
