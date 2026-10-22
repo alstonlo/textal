@@ -101,8 +101,9 @@ branch (`scripts/iucr_archive/`), which are tied to that machine's paths and are
 this branch. Its result is one table, `data/viz/acta-e-papers.jsonl.gz`, with one line per paper
 (its identifiers, licence, the paragraphs of its experimental sections and its CSD refcodes).
 Of its 27,266 papers, 27,226 are also in the PMC download; the other 40 cite a DOI that the CSD
-does not record. The corpus is the union of the two sources: the 54,961 papers from PMC plus
-those 40, for 55,001 papers. Every count below is over this union.
+does not record, so the CSD-driven download never asked PMC for them. The corpus is the union
+of the two collections: the 54,961 papers found through the CSD's DOIs plus those 40, for 55,001
+papers, all from PMC. Every count below is over this union.
 
 ### Extract the procedures
 
