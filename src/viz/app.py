@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from viz import publisher_assets
+from viz import publisher_assets, publisher_text
 from viz.publisher_data import load_public_data
 
 HERE = Path(__file__).parent
@@ -25,7 +25,9 @@ ENTRIES, PAPERS, SNAPSHOT = load_public_data(ASSETS)
 BY_ID = {e["id"]: e for e in ENTRIES}
 POSITIONS = {e["id"]: i for i, e in enumerate(ENTRIES)}
 SEARCH = {
-    e["id"]: " ".join([e["id"], e["doi"], e["paper"]["title"], e["paper"]["journal"]]).casefold()
+    e["id"]: " ".join(
+        [e["id"], e["doi"], e["name"], e["paper"]["title"], e["paper"]["journal"]]
+    ).casefold()
     for e in ENTRIES
 }
 publisher_assets.configure(PAPERS)
@@ -76,86 +78,82 @@ def figure(traces: list, **layout) -> dict:
     return json.loads(fig.to_json())
 
 
-def load_stats(entries: list[dict]) -> dict:
-    stats = json.loads((ASSETS / "stats.json").read_text())
-    by_year, pmc_years = stats["coverage"], stats["pmc_years"]
-    journals, licenses = stats["journals"], stats["licenses"]
-    counts = stats["counts"] | {"acta_entries": len(entries), "acta_papers": len(PAPERS)}
+def load_stats(entries):
+    # Every plotted attribute comes from publisher bibliography; only identifier
+    # linkage comes from the CSD. Legacy CSD statistics are not opened.
+    from collections import Counter
 
-    # Matplotlib-like margins: a year of room on both sides of the year axes, 8% above the tallest
-    # bar, and 30% right of the longest horizontal bar for its count.
-    first, last = by_year["year"][0], by_year["year"][-1]
-    hover = "%{x}: %{y:,}<extra></extra>"
+    years = Counter(p["year"] for p in PAPERS.values() if p.get("year"))
+    refyears = Counter(e["paper"]["year"] for e in entries if e["paper"].get("year"))
+    journals = Counter(p["journal"] for p in PAPERS.values())
+    licenses = Counter()
+    for p in PAPERS.values():
+        urls = " ".join(lic.get("url") or "" for lic in p["licenses"]).lower()
+        license_name = "Not indexed"
+        for token, name in [
+            ("publicdomain/zero", "CC0"),
+            ("licenses/by-nc-nd/", "CC BY-NC-ND"),
+            ("licenses/by-nc-sa/", "CC BY-NC-SA"),
+            ("licenses/by-nc/", "CC BY-NC"),
+            ("licenses/by-sa/", "CC BY-SA"),
+            ("licenses/by/", "CC BY"),
+        ]:
+            if token in urls:
+                license_name = name
+                break
+        if license_name == "Not indexed" and urls:
+            license_name = "Other publisher terms"
+        licenses[license_name] += 1
     tips = {
         "orientation": "h",
-        "texttemplate": "\u2002%{x:,}",
+        "texttemplate": "  %{x:,}",
         "textposition": "outside",
-        "textfont": {"color": INK, "size": 10},
         "cliponaxis": False,
         "hovertemplate": "%{customdata}: %{x:,}<extra></extra>",
     }
-    papers = {"title": {"text": "Papers"}, "tickformat": "~s", "showgrid": True}
 
-    # Long journal names wrap onto two lines, so that the bars keep their width on a phone.
-    names = ["<br>".join(textwrap.wrap(j, 24)) for j in journals["journal"]]
-    other = counts["pmc_papers"] - sum(journals["len"])
-    assert other >= 0, other
-
-    figures = {
-        "coverage": figure(
-            [
-                go.Bar(
-                    x=by_year["year"], y=by_year["entries"], meta="bar-light", hovertemplate=hover
-                ),
-                go.Bar(x=by_year["year"], y=by_year["in_pmc"], meta="bar", hovertemplate=hover),
-            ],
-            barmode="overlay",
-            xaxis={"range": [first - 1, last + 1], "dtick": 5},
-            yaxis=papers
-            | {"title": {"text": "CSD entries"}, "range": [0, 1.08 * max(by_year["entries"])]},
-        ),
-        "pmc_years": figure(
-            [go.Bar(x=pmc_years["year"], y=pmc_years["len"], meta="bar", hovertemplate=hover)],
-            xaxis={"range": [pmc_years["year"][0] - 1, last + 1], "dtick": 5},
-            yaxis=papers | {"range": [0, 1.08 * max(pmc_years["len"])]},
-        ),
-        "journals": figure(
+    def horizontal(counts):
+        items = list(counts)
+        return figure(
             [
                 go.Bar(
                     **tips,
-                    x=journals["len"],
-                    y=names,
-                    customdata=journals["journal"],
-                    meta="bar-warm",
-                ),
-                go.Bar(
-                    **tips,
-                    x=[other],
-                    y=["Other journals"],
-                    customdata=["Other journals"],
-                    meta="bar-other",
-                ),
-            ],
-            barmode="overlay",
-            xaxis=papers | {"range": [0, 1.3 * max(journals["len"] + [other])]},
-            yaxis={"autorange": "reversed"},
-        ),
-        "licenses": figure(
-            [
-                go.Bar(
-                    **tips,
-                    x=licenses["len"],
-                    y=licenses["license"],
-                    customdata=licenses["license"],
+                    x=[n for _, n in items],
+                    y=["<br>".join(textwrap.wrap(name, 26)) for name, _ in items],
+                    customdata=[name for name, _ in items],
                     meta="bar-warm",
                 )
             ],
-            xaxis=papers | {"range": [0, 1.3 * max(licenses["len"])]},
+            xaxis={
+                "title": {"text": "Papers"},
+                "range": [0, max([n for _, n in items] or [1]) * 1.3],
+            },
             yaxis={"autorange": "reversed"},
-            bargap=0.5,
+        )
+
+    top = journals.most_common(12)
+    if len(journals) > 12:
+        top.append(("Other journals", sum(journals.values()) - sum(n for _, n in top)))
+    y = sorted(years)
+    figures = {
+        "coverage": figure(
+            [go.Bar(x=y, y=[refyears.get(v, 0) for v in y], meta="bar")],
+            yaxis={"title": {"text": "Refcode links"}},
         ),
+        "pmc_years": figure(
+            [go.Bar(x=y, y=[years[v] for v in y], meta="bar")], yaxis={"title": {"text": "Papers"}}
+        ),
+        "journals": horizontal(top),
+        "licenses": horizontal(licenses.most_common()),
     }
-    return {"counts": counts, "figures": figures}
+    return {
+        "counts": {
+            "entries": len(entries),
+            "pmc_papers": len(PAPERS),
+            "pmc_entries": sum(bool(e["pmcid"]) for e in entries),
+        },
+        "figures": figures,
+    }
 
 
 STATS = load_stats(ENTRIES)
@@ -164,7 +162,7 @@ RELOAD_LOCK = threading.Lock()
 
 
 def refresh_snapshot():
-    global ENTRIES, PAPERS, SNAPSHOT, BY_ID, POSITIONS, SEARCH, SNAPSHOT_MTIME
+    global ENTRIES, PAPERS, SNAPSHOT, BY_ID, POSITIONS, SEARCH, SNAPSHOT_MTIME, STATS
     stamp = (ASSETS / "publisher_snapshot.json").stat().st_mtime_ns
     if stamp == SNAPSHOT_MTIME:
         return
@@ -177,11 +175,12 @@ def refresh_snapshot():
         POSITIONS = {e["id"]: i for i, e in enumerate(entries)}
         SEARCH = {
             e["id"]: " ".join(
-                [e["id"], e["doi"], e["paper"]["title"], e["paper"]["journal"]]
+                [e["id"], e["doi"], e["name"], e["paper"]["title"], e["paper"]["journal"]]
             ).casefold()
             for e in entries
         }
         publisher_assets.configure(papers)
+        STATS = load_stats(entries)
         SNAPSHOT_MTIME = stamp
 
 
@@ -206,22 +205,38 @@ async def update_public_snapshot(request, call_next):
 def index(request: Request):
     hero = [
         BY_ID[r]
-        for r in ("DUQZAR", "COVPIN01", "SUHKUD", "SUHLAK", "SUHLEO", "WADCUB")
+        for r in ("COVPIN01", "AWOHOM", "PODZIU", "XEXYOR", "BAPTUL", "BINBOT")
         if r in BY_ID
     ]
+    journal_labels = {
+        "Acta Crystallographica E": "Acta E",
+        "Acta pharmaceutica Sinica. B": "Acta Pharmaceutica Sinica B",
+        "Angewandte Chemie (International ed. in English)": "Angewandte Chemie Int. Ed.",
+        "Chemistry of materials : a publication of the American Chemical Society": "Chemistry of Materials",
+    }
     return templates.TemplateResponse(
-        request, "index.html", {"stats": STATS, "hero": hero, "snapshot": SNAPSHOT}
+        request,
+        "index.html",
+        {"stats": STATS, "hero": hero, "snapshot": SNAPSHOT, "journal_labels": journal_labels},
     )
 
 
 @app.get("/explore", response_class=HTMLResponse)
-def explore(request: Request, q: str = "", status: str = "", sort: str = "refcode", page: int = 1):
+def explore(
+    request: Request,
+    q: str = "",
+    status: str = "",
+    sort: str = "refcode",
+    page: int = 1,
+    journal: str = "",
+):
     words = q.casefold().split()
     found = [
         e
         for e in ENTRIES
         if all(w in SEARCH[e["id"]] for w in words)
         and (not status or e["extraction"]["status"] == status)
+        and (not journal or e["paper"]["journal"] == journal)
     ]
     if sort == "year":
         found.sort(key=lambda e: (e["paper"]["year"] or 0, e["id"]), reverse=True)
@@ -230,7 +245,9 @@ def explore(request: Request, q: str = "", status: str = "", sort: str = "refcod
     page = max(1, min(page, pages))
 
     def link(n):
-        return "/explore?" + urlencode({"q": q, "status": status, "sort": sort, "page": n})
+        return "/explore?" + urlencode(
+            {"q": q, "status": status, "sort": sort, "page": n, "journal": journal}
+        )
 
     return templates.TemplateResponse(
         request,
@@ -247,6 +264,8 @@ def explore(request: Request, q: str = "", status: str = "", sort: str = "refcod
             "previous": link(page - 1) if page > 1 else None,
             "next": link(page + 1) if page < pages else None,
             "statuses": SNAPSHOT["extraction_statuses"],
+            "journal": journal,
+            "journals": SNAPSHOT.get("journals", {}),
         },
     )
 
@@ -267,7 +286,7 @@ def entry(request: Request, refcode: str):
             "snapshot": SNAPSHOT,
             "previous": ENTRIES[i - 1]["id"] if i else None,
             "next": ENTRIES[i + 1]["id"] if i + 1 < len(ENTRIES) else None,
-            "related": [x["id"] for x in ENTRIES if x["pmcid"] == e["pmcid"]],
+            "related": [x["id"] for x in ENTRIES if x["paper_id"] == e["paper_id"]],
         },
     )
 
@@ -279,7 +298,7 @@ def collection():
 
 @app.get("/api/paper-assets/{pmcid}")
 def paper_assets(pmcid: str):
-    if pmcid not in PAPERS:
+    if pmcid not in publisher_assets.PAPERS:
         raise HTTPException(404, "Unknown publisher paper")
     try:
         return publisher_assets.public_manifest(pmcid)
@@ -294,7 +313,7 @@ def paper_assets(pmcid: str):
 
 @app.get("/api/cif-models/{pmcid}/{name}")
 def cif_models(pmcid: str, name: str):
-    if pmcid not in PAPERS:
+    if pmcid not in publisher_assets.PAPERS:
         raise HTTPException(404, "Unknown publisher paper")
     try:
         return publisher_assets.cif_models(pmcid, name)
@@ -331,7 +350,7 @@ def crystal_frame(request: Request):
 
 @app.get("/api/publisher-thumbnail/{pmcid}.svg")
 def publisher_thumbnail(pmcid: str):
-    if pmcid not in PAPERS:
+    if pmcid not in publisher_assets.PAPERS:
         raise HTTPException(404, "Unknown publisher paper")
     try:
         return FileResponse(publisher_assets.thumbnail(pmcid), media_type="image/svg+xml")
@@ -341,3 +360,14 @@ def publisher_thumbnail(pmcid: str):
             '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><text x="120" y="116" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#6B6B68">Publisher preview unavailable</text><text x="120" y="135" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#6B6B68">Open paper to inspect saved files</text></svg>',
             media_type="image/svg+xml",
         )
+
+
+@app.get("/api/paper-text")
+def paper_text(doi: str):
+    paper = PAPERS.get("doi:" + doi.lower())
+    if paper is None:
+        raise HTTPException(404, "Unknown publisher paper")
+    try:
+        return publisher_text.read(paper["doi"])
+    except (OSError, ValueError):
+        raise HTTPException(404, "Publisher text unavailable") from None

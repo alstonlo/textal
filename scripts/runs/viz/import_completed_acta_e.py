@@ -28,6 +28,7 @@ def main():
     p.add_argument("--node", default="tri-dm2")
     p.add_argument("--remote-run", default=DEFAULT_RUN)
     p.add_argument("--progress-only", action="store_true")
+    p.add_argument("--texts", type=Path, default=Path("data/publisher-texts"))
     args = p.parse_args()
 
     def remote(code, timeout=120):
@@ -89,7 +90,9 @@ def main():
             raise ValueError(
                 "Completed Parquet is missing refcodes; refusing a partial final import"
             )
-        result = build(args.sections, parquet, args.output)
+        result = build(
+            args.sections, parquet, args.output, texts=args.texts, preserve_existing=True
+        )
     receipt.update(
         imported_at=result["built_at"],
         remote_run=args.remote_run,

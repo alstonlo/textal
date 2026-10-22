@@ -180,6 +180,35 @@ class PublisherSiteTests(unittest.TestCase):
         self.assertNotIn("package_path", text)
         self.assertNotIn("Unverified field", text)
 
+    def test_full_publisher_text_is_scoped_to_imported_papers(self):
+        from unittest.mock import patch
+
+        from viz import publisher_text
+
+        with patch.object(publisher_text, "DIRECTORY", self.folder / "texts"):
+            publisher_text.DIRECTORY.mkdir(exist_ok=True)
+            doi = "10.1107/test"
+            path = publisher_text.DIRECTORY / (
+                hashlib.sha256(doi.encode()).hexdigest() + ".json.gz"
+            )
+            data = {"doi": doi, "main_text": "# Publisher article", "supplements": []}
+            with gzip.open(path, "wt") as stream:
+                json.dump(data, stream)
+            self.assertEqual(self.client.get("/api/paper-text", params={"doi": doi}).json(), data)
+            self.assertEqual(
+                self.client.get("/api/paper-text", params={"doi": "../private"}).status_code, 404
+            )
+            with gzip.open(path, "wt") as stream:
+                json.dump({**data, "csd_metadata": SECRET}, stream)
+            self.assertEqual(
+                self.client.get("/api/paper-text", params={"doi": doi}).status_code, 404
+            )
+        page = self.client.get("/entry/ABCDEF").text
+        self.assertLess(
+            page.index("What the paper says about this crystal"), page.index('class="paper"')
+        )
+        self.assertIn("main-reading", page)
+
     def test_original_publisher_cif_bytes_unchanged(self):
         response = self.client.get("/paper-assets/PMC1234/0-publisher.cif")
         self.assertEqual(response.status_code, 200)

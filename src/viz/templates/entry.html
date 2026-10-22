@@ -1,28 +1,70 @@
 {% extends "base.html" %}
 {% set active = "explore" %}
-{% block title %}{{ e.id }} · {{ paper.title }}{% endblock %}
+{% set x = e.extraction %}
+{% block title %}{{ e.name }} · {{ e.id }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ root }}/static/publisher-media.css">{% endblock %}
 {% block body %}
   <section class="page-head entry-head">
-    <a class="back" href="{{ root }}/explore">← All Acta E entries</a>
-    <div class="entry-kicker"><span class="refcode">{{ e.id }}</span><span class="status-pill {{ e.extraction.status }}">Extraction {{ e.extraction.status|replace('_', ' ') }}</span></div>
-    <h1>{{ paper.title }}</h1>
-    <p class="facts muted">{{ paper.journal }} · {{ paper.year or 'Year unknown' }} · <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">{{ e.doi }} ↗</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
+    <a class="back muted" href="{{ root }}/explore">← All {{ "{:,}".format(snapshot.refcodes) }} entries</a>
+    <div class="entry-kicker"><span class="refcode">{{ e.id }}</span><span class="status-pill {{ x.status }}">Extraction {{ x.status|replace('_', ' ') }}</span></div>
+    <h1>{{ e.name }}</h1>
+    <p class="small muted name-source">{{ e.name_source }}</p>
+    <p class="facts muted">{{ paper.journal }} · {{ paper.year or 'Year unknown' }} · <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">{{ e.doi }} ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
     target="_blank"
-    rel="noopener">{{ paper.pmcid }} ↗</a></p>
+    rel="noopener">{{ paper.pmcid }} ↗</a>{% endif %}</p>
     <nav class="entry-navigation">{% if previous %}<a class="chip" href="{{ root }}/entry/{{ previous }}">← {{ previous }}</a>{% endif %}<form action="{{ root }}/explore"><input name="q"
        placeholder="Jump to refcode or DOI"
        aria-label="Find another entry"><button type="submit" class="chip">Find</button></form>{% if next %}<a class="chip" href="{{ root }}/entry/{{ next }}">{{ next }} →</a>{% endif %}</nav>
-    {% if related|length > 1 %}<p class="small muted">Other refcodes linked to this paper: {% for ref in related %}<a href="{{ root }}/entry/{{ ref }}">{{ ref }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
-    <div id="publisher-media"
-         data-pmcid="{{ paper.pmcid }}"
-         data-doi="{{ e.doi }}"
-         data-ref="{{ e.id }}"></div>
+    {% if related|length > 1 %}<p class="small muted">Refcodes linked to this paper: {% for ref in related %}<a href="{{ root }}/entry/{{ ref }}">{{ ref }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    {% if paper.provenance.get("has_publisher_package", True) %}<div id="publisher-media"
+     data-pmcid="{{ paper.pmcid or '' }}"
+     data-doi="{{ e.doi }}"
+     data-ref="{{ e.id }}"></div>{% else %}<p class="publisher-files-note muted small">Publisher structural files are not linked in the local archive for this paper. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Open the publisher article ↗</a></p>{% endif %}
   </section>
-  <section class="record-section publisher-record"><div class="record-heading"><h2>Procedure & source</h2><p class="muted small">Full publisher snippets beside the structured extraction. Fields shown below have a supporting quote verified in these snippets.</p></div><div class="record-columns"><article class="source-snippets"><h3>Full source snippets</h3>{% for sec in paper.sections %}<span class="section-label">{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</span>{% endfor %}{% for p in paper.paragraphs %}<p id="source-{{ p.paragraph_index }}">{{ p.text }}</p>{% else %}<p class="muted">No matching synthesis, crystallisation or experimental section was found in this paper's saved XML.</p>{% endfor %}<details class="license-note"><summary>Publisher licence evidence</summary>{% for lic in paper.licenses %}<p>{{ lic.text }}{% if lic.url %} <a href="{{ lic.url }}" target="_blank" rel="noopener">Terms ↗</a>{% endif %}</p>{% else %}<p>Licence evidence was not available in the source XML.</p>{% endfor %}</details></article>
-    <article class="extracted-procedure"><h3>Structured extraction</h3>{% if e.extraction.status == "pending" %}<p class="muted">This refcode is imported. Its structured extraction was pending when this snapshot was built; source snippets and publisher assets can already be browsed.</p>{% elif not e.extraction.fields %}<p class="muted">No structured field with a verified supporting quote is available in this snapshot. Inspect the full snippets for details.</p>{% endif %}{% for field in fields %}{% if e.extraction.fields.get(field) %}<section class="procedure-field"><h3>{{ field|replace('_', ' ')|capitalize }}</h3><p>{{ e.extraction.fields[field] }}</p><details><summary>Supporting publisher quotes</summary>{% for ev in e.extraction.evidence if ev.field==field %}<blockquote>{{ ev.quote }}</blockquote>{% endfor %}</details></section>{% endif %}{% endfor %}{% if e.extraction.extracted_at %}<p class="small muted extraction-time">Extracted {{ e.extraction.extracted_at }} · {{ e.extraction.model or '' }}</p>{% endif %}</article></div></section>
+  <section class="record-section main-reading">
+    <div class="record">
+      <h2>What the paper says about this crystal</h2>
+      {% if x.status=="pending" %}<p class="muted record-lead">This entry is imported. Its extraction was still running when this snapshot was built.</p>{% else %}
+        {% if x.summary %}<p class="record-lead">{{ x.summary }}</p>{% endif %}
+        {% if x.compound_label %}<p class="muted small record-match">The paper calls this {{ x.compound_label }}.</p>{% endif %}
+        {% if not x.fields and not x.summary %}<p class="muted record-lead">No publisher-supported extraction is available for this record. Status: {{ x.status|replace('_', ' ') }}.</p>{% endif %}
+        <dl class="record-fields">
+          {% for field in fields if x.fields.get(field) %}
+            {% set quotes = x.evidence|selectattr('field','equalto',field)|list %}
+            <div>
+              <dt>{{ field|replace('_', ' ')|capitalize }}</dt>
+              <dd>
+                <p>{{ x.fields[field] }}</p>
+                {% if quotes %}<details><summary>{{ quotes|length }} quote{% if quotes|length>1 %}s{% endif %} from the paper</summary>{% for ev in quotes %}<blockquote tabindex="0" data-source="{{ ev.get('source_file', '') }}">{{ ev.quote }}</blockquote>{% if not ev.get("verified", True) %}<span class="quote-status">Recorded in extraction; not independently matched to stored text.</span>{% endif %}{% endfor %}</details>{% endif %}
+              </dd>
+            </div>
+          {% endfor %}
+        </dl>
+      {% endif %}
+      {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} · {{ x.extracted_at }}.</p>{% endif %}
+      {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Full Acta E synthesis / experimental snippets</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
+    </div>
+    <div class="paper" data-doi="{{ e.doi }}">
+      <h2>The paper</h2>
+      <p class="paper-title">{{ paper.title }}</p>
+      <p class="muted small paper-citation">{{ paper.journal }} · {{ paper.year or 'Year unknown' }}. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Read at publisher ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
+    target="_blank"
+    rel="noopener">PMC ↗</a>{% endif %}</p>
+      <label class="paper-document" hidden>
+        Document
+        <select id="paper-document" aria-label="Paper document"></select>
+      </label>
+      <p class="muted small paper-status" id="paper-status" role="status">Loading publisher text…</p>
+      <div class="paper-text" id="paper-text"><h3>Publisher excerpts</h3>{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No local source text is available. Follow the DOI above to read the article.</p>{% endfor %}</div>
+      <details class="license-note"><summary>Publisher licence & bibliography sources</summary><p>{{ paper.provenance.bibliography_source }}{% if paper.provenance.get("bibliography_url") %} · <a href="{{ paper.provenance.bibliography_url }}"
+    target="_blank"
+    rel="noopener">Source ↗</a>{% endif %}</p>{% for lic in paper.licenses %}<p>{{ lic.text }}{% if lic.url %} <a href="{{ lic.url }}" target="_blank" rel="noopener">Publisher terms ↗</a>{% endif %}</p>{% else %}<p>Licence terms were not indexed for this paper. Consult the publisher article.</p>{% endfor %}</details>
+    </div>
+  </section>
+  <script type="application/json" id="evidence">{{ x.evidence|tojson }}</script>
 {% endblock %}
 {% block scripts %}
+  <script src="{{ root }}/static/vendor/markdown-it.min.js"></script>
   <script src="{{ root }}/static/publisher-media.js"></script>
   <script src="{{ root }}/static/entry.js"></script>
 {% endblock %}

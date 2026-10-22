@@ -1,12 +1,15 @@
-"""Strict public dataset loader. Legacy entries.parquet is never opened."""
+"""Fail-closed public dataset loader. Legacy CSD entries.parquet is never opened."""
 
 import json
 from pathlib import Path
 
 import polars as pl
 
-ENTRY_COLUMNS = {"id", "doi", "pmcid", "extraction_json"}
+from viz.names import crystal_name
+
+ENTRY_COLUMNS = {"id", "doi", "pmcid", "paper_id", "extraction_json"}
 PAPER_COLUMNS = {
+    "paper_id",
     "pmcid",
     "doi",
     "title",
@@ -15,13 +18,23 @@ PAPER_COLUMNS = {
     "paragraphs_json",
     "sections_json",
     "licenses_json",
+    "provenance_json",
+}
+FIELDS = {
+    "synthesis",
+    "crystallisation",
+    "characterisation",
+    "solid_form",
+    "purpose_and_properties",
+    "other_notes",
 }
 
 
 def load_public_data(folder: Path):
     snapshot = json.loads((folder / "publisher_snapshot.json").read_text())
-    if snapshot.get("schema") != "publisher-only-v1":
-        raise ValueError("Rebuild publisher-only web assets; legacy CSD tables are not supported.")
+    version = snapshot.get("schema")
+    if version not in {"publisher-only-v1", "publisher-only-v2"}:
+        raise ValueError("Rebuild publisher-only web assets; legacy CSD tables are unsupported.")
     if set(snapshot) - {
         "schema",
         "built_at",
@@ -31,16 +44,43 @@ def load_public_data(folder: Path):
         "with_snippets",
         "source",
         "extraction_policy",
+        "collections",
+        "journals",
     }:
         raise ValueError("Unexpected public snapshot fields")
     entry_table = pl.read_parquet(folder / "publisher_entries.parquet")
     paper_table = pl.read_parquet(folder / "publisher_papers.parquet")
-    if set(entry_table.columns) != ENTRY_COLUMNS or set(paper_table.columns) != PAPER_COLUMNS:
-        raise ValueError("Unexpected public columns. Refusing to expose an unreviewed data schema.")
+    entry_columns = ENTRY_COLUMNS if version.endswith("v2") else ENTRY_COLUMNS - {"paper_id"}
+    paper_columns = (
+        PAPER_COLUMNS if version.endswith("v2") else PAPER_COLUMNS - {"paper_id", "provenance_json"}
+    )
+    if set(entry_table.columns) != entry_columns or set(paper_table.columns) != paper_columns:
+        raise ValueError("Unexpected public columns; refusing an unreviewed schema.")
     papers = {}
     for p in paper_table.to_dicts():
+        p.setdefault("paper_id", "doi:" + p["doi"])
         for key in ("paragraphs", "sections", "licenses"):
             p[key] = json.loads(p.pop(key + "_json"))
+        p["provenance"] = (
+            json.loads(p.pop("provenance_json"))
+            if "provenance_json" in p
+            else {
+                "collection": "Acta E",
+                "bibliography_source": "Publisher XML",
+                "text_source": "Publisher XML sections",
+                "has_full_text": False,
+                "has_publisher_package": True,
+            }
+        )
+        if set(p["provenance"]) - {
+            "collection",
+            "bibliography_source",
+            "bibliography_url",
+            "text_source",
+            "has_full_text",
+            "has_publisher_package",
+        }:
+            raise ValueError("Unexpected publisher provenance")
         for field, allowed in {
             "paragraphs": {"text", "paragraph_index"},
             "sections": {"title", "label", "paragraph_indices"},
@@ -51,28 +91,42 @@ def load_public_data(folder: Path):
         for lic in p["licenses"]:
             if lic.get("url") and not lic["url"].startswith(("http://", "https://")):
                 lic["url"] = None
-        papers[p["pmcid"]] = p
+        papers[p["paper_id"]] = p
     entries = []
     for e in entry_table.to_dicts():
+        e.setdefault("paper_id", "doi:" + e["doi"])
         x = json.loads(e.pop("extraction_json"))
-        if set(x) - {"status", "fields", "evidence", "extracted_at", "model", "prompt_version"}:
-            raise ValueError("Unexpected extraction fields")
-        if set(x["fields"]) - {
-            "synthesis",
-            "crystallisation",
-            "characterisation",
-            "solid_form",
-            "purpose_and_properties",
-            "other_notes",
+        if set(x) - {
+            "status",
+            "fields",
+            "evidence",
+            "extracted_at",
+            "model",
+            "prompt_version",
+            "summary",
+            "compound_label",
+            "evidence_policy",
         }:
+            raise ValueError("Unexpected extraction fields")
+        if set(x["fields"]) - FIELDS:
             raise ValueError("Unexpected extraction topic")
-        if any(set(v) != {"field", "quote"} for v in x["evidence"]):
+        if any(set(ev) - {"field", "quote", "source_file", "verified"} for ev in x["evidence"]):
             raise ValueError("Unexpected evidence fields")
+        for ev in x["evidence"]:
+            if "source_file" in ev:
+                ev["source_file"] = (
+                    "Supplementary information"
+                    if "supp" in ev["source_file"].lower()
+                    else "Publisher text"
+                )
+        x.setdefault("summary", None)
+        x.setdefault("compound_label", None)
         e["extraction"] = x
-        p = papers[e["pmcid"]]
+        p = papers[e["paper_id"]]
         if e["doi"] != p["doi"]:
             raise ValueError("Paper / refcode DOI mismatch")
         e["paper"] = p
+        e["name"], e["name_source"] = crystal_name(e)
         entries.append(e)
     if snapshot["refcodes"] != len(entries) or snapshot["papers"] != len(papers):
         raise ValueError("Incomplete publisher snapshot")
