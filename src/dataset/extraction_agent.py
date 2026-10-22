@@ -1,10 +1,12 @@
 """Run the extraction agent on prompt jobs and collect rows in the extraction schema.
 
 Calls a model through the LiteLLM proxy (OpenAI Responses API), one request per
-paper, with the paper's PDFs attached. Jobs come from `dataset.extraction_prompt`.
+paper, with the paper's PDFs attached or their text in the message. Jobs come from
+`dataset.extraction_prompt`.
 
 Usage:
-    uv run python -m dataset.extraction_agent [JOB.json ...] [--model M] [--out FILE]
+    uv run python -m dataset.extraction_agent [JOB.json ...] [--model M] [--effort E]
+        [--workers N] [--out FILE]
 
 Needs LITELLM_API_KEY in the environment; LITELLM_BASE_URL overrides the proxy URL.
 """
@@ -13,6 +15,7 @@ import argparse
 import base64
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, datetime
 from pathlib import Path
@@ -45,7 +48,7 @@ def client() -> OpenAI:
     return OpenAI(
         base_url=os.environ.get("LITELLM_BASE_URL", DEFAULT_BASE_URL),
         api_key=os.environ["LITELLM_API_KEY"],
-        timeout=600,
+        timeout=1800,
         max_retries=3,
     )
 
@@ -72,7 +75,11 @@ def call_agent(
     (the model's reasoning summary, if it returned one).
     """
     client = client or globals()["client"]()
-    content = [_pdf_part(a["label"], a["path"]) for a in job["attachments"]]
+    content = [
+        _pdf_part(a["label"], a["path"])
+        for a in job["attachments"]
+        if a.get("input", "pdf") == "pdf"
+    ]
     content.append({"type": "input_text", "text": job["user"]})
     try:
         response = client.responses.create(
@@ -91,14 +98,16 @@ def call_agent(
             max_output_tokens=MAX_OUTPUT_TOKENS,
         )
     except APIError as e:
-        return {
-            "entries": None,
-            "status": "failed",
-            "error": str(e),
-            "usage": None,
-            "reasoning": None,
-        }
+        return failed(str(e))
+    return parse_response(response)
 
+
+def failed(error: str) -> dict:
+    return {"entries": None, "status": "failed", "error": error, "usage": None, "reasoning": None}
+
+
+def parse_response(response) -> dict:
+    """The model's records and call metadata from a Responses API response."""
     usage = response.usage.model_dump() if response.usage else None
     reasoning = "\n\n".join(
         part.text for o in response.output if o.type == "reasoning" for part in o.summary or []
@@ -176,7 +185,12 @@ def to_rows(job: dict, result: dict, model: str) -> list[dict]:
     return rows
 
 
-def run(job_paths: list[Path], model: str = DEFAULT_MODEL, workers: int = 8) -> pl.DataFrame:
+def run(
+    job_paths: list[Path],
+    model: str = DEFAULT_MODEL,
+    effort: str = DEFAULT_EFFORT,
+    workers: int = 8,
+) -> pl.DataFrame:
     """Run the agent on each job in parallel and return all rows as one DataFrame.
 
     Each paper's raw result, including the reasoning summary, is saved next to its
@@ -186,13 +200,15 @@ def run(job_paths: list[Path], model: str = DEFAULT_MODEL, workers: int = 8) -> 
 
     def one(path: Path) -> list[dict]:
         job = json.loads(path.read_text())
-        result = call_agent(job, model=model, client=c)
+        start = time.monotonic()
+        result = call_agent(job, model=model, effort=effort, client=c)
+        result["seconds"] = round(time.monotonic() - start, 1)
         path.with_suffix(".result.json").write_text(
             json.dumps(result, indent=1, ensure_ascii=False)
         )
         tokens = (result["usage"] or {}).get("total_tokens")
         tqdm.write(
-            f"{path.stem}: {result['status']}, {tokens} tokens"
+            f"{path.stem}: {result['status']}, {tokens} tokens, {result['seconds']}s"
             + (f" ({result['error']})" if result["error"] else "")
         )
         return to_rows(job, result, model)
@@ -211,11 +227,13 @@ def main() -> None:
         "jobs", nargs="*", type=Path, help="Job files (default: all in data/prompts/)"
     )
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--effort", default=DEFAULT_EFFORT, help="Reasoning effort")
+    parser.add_argument("--workers", type=int, default=8, help="Papers run in parallel")
     parser.add_argument("--out", type=Path, default=ROOT / "data" / "extractions.parquet")
     args = parser.parse_args()
 
     jobs = args.jobs or sorted(p for p in JOBS.glob("*.json") if not p.stem.endswith(".result"))
-    df = run(jobs, model=args.model)
+    df = run(jobs, model=args.model, effort=args.effort, workers=args.workers)
     df.write_parquet(args.out)
     print(f"{df.height} rows -> {args.out}")
 
