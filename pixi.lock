@@ -1474,9 +1474,9 @@ packages:
   - bcrypt>=3.1.5 ; extra == 'ssh'
   requires_python: '>=3.9,!=3.9.0,!=3.9.1'
 - pypi: ./
-  name: crystalog
+  name: csd-textal
   version: 0.1.0
-  sha256: f63079f1bbb65e25335c9e7a866285aee6071a2390a8156d96f77b173af5ddcd
+  sha256: 1d30ae5046cd4920d72929e3a7baa2dbf54495a2e00af181928f326e74c6423c
   requires_dist:
   - pymupdf4llm<1
   requires_python: '>=3.12,<3.13'

@@ -19,7 +19,7 @@ from tqdm import tqdm
 from dataset.csd import NOT_JOURNALS, read_papers, read_pmc_ids
 from dataset.paths import DATA_DIR
 
-UA = "crystalog/0.1 (research; open-access papers of CSD entries)"
+UA = "csd-textal/0.1 (research; open-access papers of CSD entries)"
 # The PubMed Central (PMC) open-access articles on AWS: one folder `PMC<id>.<version>/` per article
 # version, holding its PDF, its XML full text, its figures and supplementary files, and its record.
 BUCKET = "https://pmc-oa-opendata.s3.amazonaws.com"

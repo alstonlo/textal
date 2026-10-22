@@ -1,5 +1,5 @@
 [project]
-name = "crystalog"
+name = "csd-textal"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
 dependencies = ["pymupdf4llm<1"]
@@ -30,7 +30,7 @@ numpy = ">=2.3,<2.4"
 pillow = "<13"
 
 [tool.pixi.pypi-dependencies]
-crystalog = { path = ".", editable = true }
+csd-textal = { path = ".", editable = true }
 recess = { git = "https://github.com/alstonlo/recess.git" }
 
 # MinerU and its GPU stack (PyTorch, vLLM) live in their own environment: `pixi run -e ocr ...`.

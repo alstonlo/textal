@@ -42,6 +42,10 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
     `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
     finished, so a stopped run can resume.
+  - `viz/`: the tables behind the website, made once by hand and taken as given, e.g.
+    `csd_drugs_with_paper.parquet`: the CSD entries of the drug subset (one row per refcode and
+    DrugBank ID) that have a downloaded paper, with their CCDC number, CIF and the DOI and folder
+    of the paper.
 - `results/`: the plots (PNG), one folder per data folder they describe, e.g. `papers/plots/`
   for `data/papers/`.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
