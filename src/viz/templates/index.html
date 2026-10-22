@@ -2,40 +2,62 @@
 {% set active = "home" %}
 {% set c = stats.counts %}
 {% block head %}
-<script src="https://cdn.plot.ly/plotly-4.1.1.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-4.1.1.min.js"></script>
 {% endblock %}
 {% block body %}
-<section class="hero">
-  <h1>Crystals, and how they were grown</h1>
-  <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
-  <a class="button" href="{{ root }}/explore">Browse the {{ c.drug_entries }} demo crystals</a>
-</section>
-
-<section class="strip">
-  {% for e in hero %}
-  <a class="strip-item" href="{{ root }}/entry/{{ e.id }}">{{ e.cell|safe }}<span>{{ e.name }}</span></a>
-  {% endfor %}
-</section>
-
-<section class="numbers">
-  <div><b>{{ "{:,}".format(c.entries) }}</b><span>entries in the Cambridge Structural Database, each with its paper's reference</span></div>
-  <div><b>{{ "{:,}".format(c.pmc_papers) }}</b><span>of those papers are open access in PubMed Central, covering {{ "{:,}".format(c.pmc_entries) }} entries</span></div>
-  <div><b>{{ c.drug_entries }}</b><span>crystals of {{ c.drugs }} drugs from the CSD Drug Subset, reported in {{ c.drug_papers }} open-access papers of Acta Crystallographica Section E, which we process as a demo</span></div>
-</section>
-
-<section class="block">
-  <h2>The corpus</h2>
-  <p class="muted">Every CSD entry cites the paper that reported it. We download the cited papers that are open access in PubMed Central, which serves each paper's full text as structured XML together with its licence. So the text needs no optical character recognition, and we know the terms under which each paper can be reused.</p>
-  <div class="charts">
-    <figure><figcaption>CSD entries each year: <span class="key" style="--key: var(--bar-light)">all</span> and <span class="key" style="--key: var(--bar)">with an open-access paper in PubMed Central</span>. <span class="muted">Our copy of the CSD has a cutoff in 2025, so the 2025 bar is incomplete.</span></figcaption><div class="plot" id="coverage"></div></figure>
-    <figure><figcaption>Open-access CSD papers in PubMed Central each year</figcaption><div class="plot" id="pmc_years"></div></figure>
-    <figure><figcaption>The twelve journals with the most open-access papers</figcaption><div class="plot tall" id="journals"></div></figure>
-    <figure><figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} open-access papers</figcaption><div class="plot tall" id="licenses"></div></figure>
-  </div>
-</section>
+  <section class="hero">
+    <h1>Crystals, and how they were grown</h1>
+    <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
+    <a class="button" href="{{ root }}/explore">Browse the {{ "{:,}".format(c.acta_entries) }} Acta E entries</a>
+  </section>
+  <section class="strip">
+    {% for e in hero %}
+      <a class="strip-item" href="{{ root }}/entry/{{ e.id }}">
+        <div class="tile-cell">
+          <img class="crystal-thumb"
+               src="{{ root }}/api/publisher-thumbnail/{{ e.pmcid }}.svg"
+               alt="Publisher crystal preview for {{ e.id }}"
+               loading="lazy">
+        </div>
+        <strong>{{ e.id }}</strong><span>{{ e.paper.title|truncate(75) }}</span></a>
+    {% endfor %}
+  </section>
+  <section class="numbers">
+    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>Acta E refcodes linked to {{ "{:,}".format(snapshot.papers) }} publisher papers</span></div>
+    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with complete extracted synthesis, crystallisation or experimental snippets</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>processed refcodes in this extraction snapshot; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} pending</span></div>
+  </section>
+  <section class="block collection-note">
+    <h2>Publisher sources, complete Acta E collection</h2>
+    <p class="muted">Browse every linked Acta E refcode, including entries awaiting structured extraction. Each record pairs the full source snippets with supported extraction fields, the publisher CIF and the publisher chemical scheme. CIFs are paper-level files; structure blocks are not automatically matched to individual refcodes.</p>
+    <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Other journals are shown in the aggregate corpus charts below.</p>
+  </section>
+  <section class="block">
+    <h2>The corpus</h2>
+    <p class="muted">Every CSD entry cites the paper that reported it. We download the cited papers that are open access in PubMed Central, which serves each paper's full text as structured XML together with its licence. So the text needs no optical character recognition, and we know the terms under which each paper can be reused.</p>
+    <p class="small muted">The corpus charts retain the earlier overview snapshot. Current Acta E coverage is shown above.</p>
+    <div class="charts">
+      <figure>
+        <figcaption>CSD entries each year: <span class="key" style="--key: var(--bar-light)">all</span> and <span class="key" style="--key: var(--bar)">with an open-access paper in PubMed Central</span>. <span class="muted">Our copy of the CSD has a cutoff in 2025, so the 2025 bar is incomplete.</span></figcaption>
+        <div class="plot" id="coverage"></div>
+      </figure>
+      <figure>
+        <figcaption>Open-access CSD papers in PubMed Central each year</figcaption>
+        <div class="plot" id="pmc_years"></div>
+      </figure>
+      <figure>
+        <figcaption>The twelve journals with the most open-access papers</figcaption>
+        <div class="plot tall" id="journals"></div>
+      </figure>
+      <figure>
+        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} open-access papers</figcaption>
+        <div class="plot tall" id="licenses"></div>
+      </figure>
+    </div>
+  </section>
 {% endblock %}
 {% block scripts %}
-<script>
+  <script>
 // Each trace names the CSS token of its colour in `meta`, so the stylesheet decides the bar colours.
 const FIGURES = {{ stats.figures|tojson }};
 function drawCharts() {
@@ -48,5 +70,5 @@ function drawCharts() {
 // Plotly sizes the margins from the tick labels, so it draws again once Inter has loaded.
 drawCharts();
 document.fonts.ready.then(drawCharts);
-</script>
+  </script>
 {% endblock %}
