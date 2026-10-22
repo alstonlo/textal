@@ -1,0 +1,51 @@
+# The chain from the CSD metadata to the plots: the open-access papers of the CSD entries,
+# downloaded from PubMed Central (PMC), then parsed to Markdown, then plotted.
+#
+# This file is kept for what it documents -- which script produces which file from which input, in
+# the one form that stays true because it is what actually runs. All the logic is in the scripts;
+# nothing here does anything but name inputs and outputs.
+#
+# The download should not be rebuilt casually: it takes hours and 200 GB. Snakemake only reruns a
+# rule whose output is missing or older than its input, so leave `metadata.parquet` in place.
+#
+# Run from the repo root, where every path below is anchored:
+#
+#     pixi run snakemake -s scripts/Snakefile -n          # what would run
+#     pixi run snakemake -s scripts/Snakefile -j1 all     # the plots, and the data they need
+
+PAPERS = "data/papers"
+PLOTS = ["journals", "refcodes", "years", "downloads", "chars"]
+
+
+rule all:
+    default_target: True
+    input:
+        expand("results/papers/plots/{plot}.png", plot=PLOTS),
+
+
+rule download:
+    input:
+        "data/raw/csd_metadata.full.parquet",
+    output:
+        f"{PAPERS}/metadata.parquet",
+    shell:
+        "python scripts/runs/bib/s0_download.py"
+
+
+rule parse:
+    input:
+        f"{PAPERS}/metadata.parquet",
+    output:
+        f"{PAPERS}/parsed.parquet",
+    shell:
+        "python scripts/runs/bib/s1_parse.py"
+
+
+rule plot_papers:
+    input:
+        f"{PAPERS}/metadata.parquet",
+        f"{PAPERS}/parsed.parquet",
+    output:
+        expand("results/papers/plots/{plot}.png", plot=PLOTS),
+    shell:
+        "python scripts/analysis/s0_paper_plots.py"

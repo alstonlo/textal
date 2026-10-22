@@ -229,3 +229,5 @@ CLAUDE.md
 /data
 /logs
 /sandbox
+/results
+.snakemake
