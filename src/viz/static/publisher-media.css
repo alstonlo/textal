@@ -1,0 +1,242 @@
+.paper-media-section {
+  margin: 26px 0 30px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  scroll-margin-top: 20px;
+}
+.media-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.media-section-head h3 {
+  font: 600 24px var(--font);
+  margin: 10px 0;
+}
+.media-asset-status {
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--accent);
+}
+.media-scope,
+.media-hint {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.media-panels {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+  margin-top: 20px;
+}
+.crystal-panel,
+.figure-panel {
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  padding: 16px;
+}
+.media-panels h4 {
+  font-size: 13px;
+  color: var(--accent);
+  margin: 0 0 18px;
+}
+.crystal-selects {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.crystal-selects label,
+.crystal-controls label,
+.figure-select {
+  font-size: 11px;
+  color: var(--muted);
+  display: block;
+}
+.crystal-selects select,
+.crystal-controls select,
+.figure-select select {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 8px;
+  margin-top: 5px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--ink);
+}
+.crystal-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+  margin: 12px 0;
+}
+.crystal-controls label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.crystal-controls select {
+  margin: 0 0 0 3px;
+  width: auto;
+  max-width: 170px;
+}
+.crystal-controls .button {
+  padding: 7px;
+  font-size: 10px;
+}
+.crystal-canvas {
+  width: 100%;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+  background: white;
+  border: 1px solid #e6ebe6;
+}
+.crystal-info {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--accent);
+  min-height: 20px;
+}
+.crystal-cell-info {
+  font: 11px/1.8 monospace;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.crystal-downloads {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: var(--muted);
+}
+.publisher-figure {
+  margin: 15px 0 0;
+}
+.publisher-figure img {
+  display: block;
+  max-width: 100%;
+  max-height: 430px;
+  object-fit: contain;
+  width: 100%;
+  background: white;
+  border: 1px solid #edf0eb;
+}
+.publisher-figure figcaption {
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 15px 0;
+  color: var(--muted);
+}
+.publisher-figure figcaption strong {
+  color: var(--ink);
+}
+.publisher-figure figcaption span {
+  font: 10px monospace;
+  overflow-wrap: anywhere;
+}
+.media-empty {
+  padding: 22px 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.media-provenance {
+  margin-top: 16px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.media-provenance summary {
+  cursor: pointer;
+}
+.media-provenance .source-path {
+  font: 10px/1.8 monospace;
+  overflow-wrap: anywhere;
+}
+.media-provenance-body > div {
+  border-top: 1px solid var(--line);
+  padding: 10px 0;
+}
+@media (max-width: 1100px) {
+  .media-panels {
+    grid-template-columns: 1fr;
+  }
+}
+@media (max-width: 760px) {
+  .crystal-panel,
+  .figure-panel {
+    padding: 12px;
+  }
+  .crystal-canvas {
+    height: 350px;
+  }
+  .crystal-selects {
+    grid-template-columns: 1fr;
+  }
+  .media-section-head h3 {
+    font-size: 26px;
+  }
+}
+.crystal-frame {
+  display: block;
+  width: 100%;
+  height: 640px;
+  border: 0;
+  margin: 14px 0 8px;
+  background: #ffffff;
+}
+.frame-root {
+  max-width: none;
+}
+.frame-root .crystal-controls {
+  gap: 7px;
+}
+.frame-root .crystal-canvas {
+  height: 350px;
+}
+
+/* Keep main's large white 3D canvas; schemes are publisher images below it. */
+.media-panels {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+}
+.crystal-panel {
+  padding: 0 !important;
+  border: 0 !important;
+}
+.figure-panel {
+  max-width: 520px !important;
+  width: 100%;
+  justify-self: center;
+  border: 0 !important;
+  background: var(--soft);
+  border-radius: 10px;
+}
+.frame-root .crystal-canvas {
+  height: 560px;
+}
+.frame-root .button {
+  margin-top: 0;
+}
+.crystal-canvas {
+  border-radius: 12px;
+}
+.frame-root .crystal-controls {
+  font-family: var(--font);
+}
+@media (max-width: 650px) {
+  .frame-root .crystal-canvas {
+    height: 400px;
+  }
+}

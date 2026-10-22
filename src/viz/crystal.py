@@ -1,6 +1,7 @@
 import math
 import re
 
+import gemmi
 import numpy as np
 import py3Dmol
 
@@ -74,31 +75,43 @@ def cif_loop(cif: str, tag: str) -> list[list[str]]:
 
 
 def parse_structure(cif: str) -> tuple[list[str], np.ndarray, np.ndarray, np.ndarray]:
-    """Reads the atoms of a CSD CIF and fills the unit cell with its symmetry operators.
+    """Reads publisher CIF atoms with Gemmi and fills the unit cell with its symmetry operators.
 
     Returns:
         The element symbols, the fractional coordinates (n, 3) of every atom in the cell, the
         lattice matrix (3, 3) whose rows are the lattice vectors, and the index (n,) of the
         molecule each atom belongs to.
     """
-    cell = []
-    for tag in ("a", "b", "c", "alpha", "beta", "gamma"):
-        kind = "length" if tag in "abc" else "angle"
-        m = re.search(rf"^_cell_{kind}_{tag}\s+([\d.]+)", cif, re.MULTILINE)
-        cell.append(float(m.group(1)))
-    lattice = lattice_matrix(*cell)
-
-    sites = cif_loop(cif, "_atom_site_fract_x")
-    elems = [s[1] for s in sites]
-    frac = np.asarray([[float(re.sub(r"\(\d+\)", "", v)) for v in s[2:5]] for s in sites])
-    ops = [row[-1] for row in cif_loop(cif, "_symmetry_equiv_pos_as_xyz")] or ["x,y,z"]
-
-    x, y, z = frac.T
-    images = []
-    for op in ops:
-        expr = op.strip("'\" ").lower().split(",")
-        assert len(expr) == 3, op
-        images.append(np.stack([eval(e, {"x": x, "y": y, "z": z}) for e in expr], axis=1))
+    document = gemmi.cif.read_string(cif)
+    structure = next(
+        (
+            gemmi.make_small_structure_from_block(b)
+            for b in document
+            if len(b.find_values("_atom_site_fract_x"))
+        ),
+        None,
+    )
+    if structure is None or not structure.sites:
+        raise ValueError("Publisher CIF has no supported fractional atom sites")
+    lattice = lattice_matrix(
+        structure.cell.a,
+        structure.cell.b,
+        structure.cell.c,
+        structure.cell.alpha,
+        structure.cell.beta,
+        structure.cell.gamma,
+    )
+    elems = [site.element.name for site in structure.sites]
+    frac = np.asarray([[site.fract.x, site.fract.y, site.fract.z] for site in structure.sites])
+    ops = list(structure.symops)
+    if not ops and structure.spacegroup:
+        ops = [op.triplet() for op in structure.spacegroup.operations()]
+    ops = ops or ["x,y,z"]
+    if len(elems) * len(ops) > 2000:
+        raise ValueError("Structure exceeds the whole-molecule preview size limit")
+    images = [
+        np.asarray([gemmi.Op(op).apply_to_xyz(point.tolist()) for point in frac]) for op in ops
+    ]
     frac_all = np.concatenate(images) % 1.0
     elems_all = elems * len(ops)
 
@@ -209,7 +222,7 @@ def point(p) -> dict:
 
 
 def draw_crystal(cif: str, background: str, height: int = 560) -> str:
-    """Draws a CSD CIF with py3Dmol: the filled unit cell, and the molecules around it.
+    """Draws a publisher CIF with py3Dmol: the filled unit cell, and the molecules around it.
 
     The look follows `clari.chem.draw.draw_crystal`: sticks and small spheres, the cell as thin
     cylinders, and the lattice vectors as red, green and blue arrows from the origin. Atoms come
@@ -263,3 +276,30 @@ def draw_crystal(cif: str, background: str, height: int = 560) -> str:
         view.addCylinder({"start": point(e[0]), "end": point(e[1]), "radius": 0.05})
     view.zoomTo({"model": 0})
     return view._make_html()
+
+
+def viewer_geometry(cif: str) -> dict:
+    """The original main-site molecule, shell and lattice geometry, from publisher CIF only."""
+    elems, frac, lattice, mols = parse_structure(cif)
+    shifts = np.asarray([s for s in np.ndindex(3, 3, 3) if s != (1, 1, 1)]) - 1
+    centres = np.stack([frac[mols == m].mean(axis=0) for m in range(mols.max() + 1)])
+    near = centres[None] + shifts[:, None]
+    near = ((near >= -0.5) & (near <= 1.5)).all(axis=-1)[:, mols]
+    shell = (frac[None] + shifts[:, None])[near]
+    shell_elems = np.asarray(elems)[np.nonzero(near)[1]].tolist()
+
+    def xyz(names, positions):
+        lines = [
+            f"{e} {x:.8f} {y:.8f} {z:.8f}"
+            for e, (x, y, z) in zip(names, positions @ lattice, strict=True)
+        ]
+        return str(len(lines)) + "\n\n" + "\n".join(lines)
+
+    return {
+        "xyz": xyz(elems, frac),
+        "shell_xyz": xyz(shell_elems, shell),
+        "atoms": len(elems),
+        "lattice": lattice.tolist(),
+        "edges": (UNIT_CUBE_EDGES @ lattice).tolist(),
+        "colours": VIEWER_COLOURS,
+    }

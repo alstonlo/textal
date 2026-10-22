@@ -1,102 +1,42 @@
+"""TEXtal public website: publisher-only structures, schemes and paper snippets."""
+
 import json
-import re
+import math
+import os
 import textwrap
+import threading
 from pathlib import Path
+from urllib.parse import urlencode
 
 import plotly.graph_objects as go
-import polars as pl
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from rdkit import Chem
-from rdkit.Chem import rdDepictor
-from rdkit.Chem.Draw import rdMolDraw2D
 
-from dataset.extraction_schema import COLUMNS
-from viz.crystal import ELEMENT_COLOURS, OTHER_COLOUR, draw_cell, draw_crystal
+from viz import publisher_assets
+from viz.publisher_data import load_public_data
 
 HERE = Path(__file__).parent
-# Written by `scripts/runs/viz/s0_assets.py`, so the website needs neither the CSD nor the papers.
-ASSETS = HERE / "assets"
-
-FORMS = ["salt", "cocrystal", "hydrate", "solvate"]
-FORM_NAMES = {
-    "salt": "Salts",
-    "cocrystal": "Cocrystals",
-    "hydrate": "Hydrates",
-    "solvate": "Solvates",
-    "neat": "Neat compounds",
+ASSETS = Path(os.environ.get("TEXTAL_ASSETS", str(HERE / "assets")))
+INK, MUTED, GRID = "#111111", "#6B6B68", "#E5E5E3"
+ENTRIES, PAPERS, SNAPSHOT = load_public_data(ASSETS)
+BY_ID = {e["id"]: e for e in ENTRIES}
+POSITIONS = {e["id"]: i for i, e in enumerate(ENTRIES)}
+SEARCH = {
+    e["id"]: " ".join([e["id"], e["doi"], e["paper"]["title"], e["paper"]["journal"]]).casefold()
+    for e in ENTRIES
 }
-
-CIF_TAGS = {
-    "space_group": "_symmetry_space_group_name_H-M",
-    "crystal_system": "_symmetry_cell_setting",
-    "a": "_cell_length_a",
-    "b": "_cell_length_b",
-    "c": "_cell_length_c",
-    "alpha": "_cell_angle_alpha",
-    "beta": "_cell_angle_beta",
-    "gamma": "_cell_angle_gamma",
-    "cell_volume": "_cell_volume",
-    "z": "_cell_formula_units_Z",
-}
-
-
-def rgb(hex_: str) -> tuple[float, float, float]:
-    return tuple(int(hex_[i : i + 2], 16) / 255 for i in (1, 3, 5))
-
-
-# 2D depictions in the same element colours as the cell drawings; RDKit wants RGB in [0, 1].
-ATOM_COLOURS = {-1: rgb(OTHER_COLOUR), 1: rgb(ELEMENT_COLOURS["C"])}
-ATOM_COLOURS |= {
-    Chem.GetPeriodicTable().GetAtomicNumber(e): rgb(h) for e, h in ELEMENT_COLOURS.items()
-}
-
-INK = "#111111"
-MUTED = "#6B6B68"
-GRID = "#E5E5E3"
-
-
-def parse_cif(cif: str) -> dict:
-    """Reads the cell and space group of a CSD CIF; uncertainties like `(3)` are dropped."""
-    out = {}
-    for key, tag in CIF_TAGS.items():
-        m = re.search(rf"^{re.escape(tag)}\s+(.+)$", cif, re.MULTILINE)
-        out[key] = re.sub(r"\(\d+\)", "", m.group(1)).strip().strip("'") if m else None
-    return out
-
-
-def draw(smiles: str, width: int = 240, height: int = 170) -> str:
-    """Draws a molecule as an inline SVG with RDKit; an empty string if the SMILES does not parse."""
-    mol = Chem.MolFromSmiles(smiles)
-    if mol is None:
-        return ""
-    rdDepictor.Compute2DCoords(mol)
-    drawer = rdMolDraw2D.MolDraw2DSVG(width, height)
-    opts = drawer.drawOptions()
-    opts.clearBackground = False
-    opts.bondLineWidth = 1.6
-    opts.padding = 0.08
-    opts.updateAtomPalette(ATOM_COLOURS)
-    drawer.DrawMolecule(mol)
-    drawer.FinishDrawing()
-    return drawer.GetDrawingText().split("?>", 1)[-1].strip()
-
-
-def load_entries() -> list[dict]:
-    ext = pl.read_parquet(ASSETS / "extractions.parquet")
-    extractions = {row["identifier"]: row for row in ext.to_dicts()}
-    entries = pl.read_parquet(ASSETS / "entries.parquet").to_dicts()
-    for e in entries:
-        e.update(parse_cif(e["cif"]))
-        e["name"] = ", ".join(e["drugs"])
-        e["forms"] = [f for f in FORMS if e[f]]
-        e["svg"] = draw(e["smiles"])
-        e["cell"] = draw_cell(e["cif"])
-        e["extraction"] = extractions[e["id"]]
-    return entries
+publisher_assets.configure(PAPERS)
+FIELDS = [
+    "crystallisation",
+    "synthesis",
+    "solid_form",
+    "characterisation",
+    "purpose_and_properties",
+    "other_notes",
+]
 
 
 def figure(traces: list, **layout) -> dict:
@@ -140,15 +80,7 @@ def load_stats(entries: list[dict]) -> dict:
     stats = json.loads((ASSETS / "stats.json").read_text())
     by_year, pmc_years = stats["coverage"], stats["pmc_years"]
     journals, licenses = stats["journals"], stats["licenses"]
-    forms = {f: sum(e[f] for e in entries) for f in FORMS}
-    forms["neat"] = sum(not e["forms"] for e in entries)
-
-    counts = stats["counts"] | {
-        "drug_entries": len(entries),
-        "drugs": len({d for e in entries for d in e["drugbank_ids"]}),
-        "drug_papers": len({e["doi"] for e in entries}),
-        "forms": forms,
-    }
+    counts = stats["counts"] | {"acta_entries": len(entries), "acta_papers": len(PAPERS)}
 
     # Matplotlib-like margins: a year of room on both sides of the year axes, 8% above the tallest
     # bar, and 30% right of the longest horizontal bar for its count.
@@ -226,71 +158,183 @@ def load_stats(entries: list[dict]) -> dict:
     return {"counts": counts, "figures": figures}
 
 
-ENTRIES = load_entries()
-BY_ID = {e["id"]: e for e in ENTRIES}
 STATS = load_stats(ENTRIES)
+SNAPSHOT_MTIME = (ASSETS / "publisher_snapshot.json").stat().st_mtime_ns
+RELOAD_LOCK = threading.Lock()
 
-# The paragraphs of a record on the entry page, crystallisation first since it is what the dataset
-# is for. The summary leads the record, so it is not among them.
-FIELDS = [
-    "crystallisation",
-    "synthesis",
-    "solid_form",
-    "characterisation",
-    "purpose_and_properties",
-    "other_notes",
-]
-assert set(FIELDS) <= {c.name for c in COLUMNS}, FIELDS
 
-app = FastAPI(title="TEXtal")
+def refresh_snapshot():
+    global ENTRIES, PAPERS, SNAPSHOT, BY_ID, POSITIONS, SEARCH, SNAPSHOT_MTIME
+    stamp = (ASSETS / "publisher_snapshot.json").stat().st_mtime_ns
+    if stamp == SNAPSHOT_MTIME:
+        return
+    with RELOAD_LOCK:
+        if stamp == SNAPSHOT_MTIME:
+            return
+        entries, papers, snapshot = load_public_data(ASSETS)
+        ENTRIES, PAPERS, SNAPSHOT = entries, papers, snapshot
+        BY_ID = {e["id"]: e for e in entries}
+        POSITIONS = {e["id"]: i for i, e in enumerate(entries)}
+        SEARCH = {
+            e["id"]: " ".join(
+                [e["id"], e["doi"], e["paper"]["title"], e["paper"]["journal"]]
+            ).casefold()
+            for e in entries
+        }
+        publisher_assets.configure(papers)
+        SNAPSHOT_MTIME = stamp
+
+
+app = FastAPI(title="TEXtal", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=HERE / "templates")
 
 
-def featured(entries: list[dict], n: int) -> list[dict]:
-    """Entries whose cell drawing reads well at a small size: mid-sized, one drug each."""
-    seen, out = set(), []
-    for e in sorted(entries, key=lambda e: abs(e["cell"].count("<circle") - 90)):
-        if e["drugs"][0] not in seen and e["solvent"]:
-            seen.add(e["drugs"][0])
-            out.append(e)
-        if len(out) == n:
-            return out
-    return out
-
-
-HERO = featured(ENTRIES, 6)
+@app.middleware("http")
+async def update_public_snapshot(request, call_next):
+    # A completed import becomes visible on the next page load; the API never reads
+    # in-progress extraction output or legacy CSD tables.
+    refresh_snapshot()
+    return await call_next(request)
 
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    ctx = {"stats": STATS, "hero": HERO}
-    return templates.TemplateResponse(request, "index.html", ctx)
+    hero = [
+        BY_ID[r]
+        for r in ("DUQZAR", "COVPIN01", "SUHKUD", "SUHLAK", "SUHLEO", "WADCUB")
+        if r in BY_ID
+    ]
+    return templates.TemplateResponse(
+        request, "index.html", {"stats": STATS, "hero": hero, "snapshot": SNAPSHOT}
+    )
 
 
 @app.get("/explore", response_class=HTMLResponse)
-def explore(request: Request, form: str = ""):
-    ctx = {
-        "entries": ENTRIES,
-        "counts": STATS["counts"],
-        "forms": FORMS,
-        "names": FORM_NAMES,
-        "form": form,
-    }
-    return templates.TemplateResponse(request, "explore.html", ctx)
+def explore(request: Request, q: str = "", status: str = "", sort: str = "refcode", page: int = 1):
+    words = q.casefold().split()
+    found = [
+        e
+        for e in ENTRIES
+        if all(w in SEARCH[e["id"]] for w in words)
+        and (not status or e["extraction"]["status"] == status)
+    ]
+    if sort == "year":
+        found.sort(key=lambda e: (e["paper"]["year"] or 0, e["id"]), reverse=True)
+    total = len(found)
+    pages = max(1, math.ceil(total / 48))
+    page = max(1, min(page, pages))
+
+    def link(n):
+        return "/explore?" + urlencode({"q": q, "status": status, "sort": sort, "page": n})
+
+    return templates.TemplateResponse(
+        request,
+        "explore.html",
+        {
+            "entries": found[(page - 1) * 48 : page * 48],
+            "total": total,
+            "page": page,
+            "pages": pages,
+            "q": q,
+            "status": status,
+            "sort": sort,
+            "snapshot": SNAPSHOT,
+            "previous": link(page - 1) if page > 1 else None,
+            "next": link(page + 1) if page < pages else None,
+            "statuses": SNAPSHOT["extraction_statuses"],
+        },
+    )
 
 
 @app.get("/entry/{refcode}", response_class=HTMLResponse)
 def entry(request: Request, refcode: str):
     e = BY_ID.get(refcode.upper())
     if e is None:
-        raise HTTPException(404, f"No entry {refcode}")
-    ctx = {
-        "e": e,
-        "viewer": draw_crystal(e["cif"], background="#FFFFFF"),
-        "paper": e["paper"] or "",
-        "fields": FIELDS,
-        "counts": STATS["counts"],
-    }
-    return templates.TemplateResponse(request, "entry.html", ctx)
+        raise HTTPException(404, "Unknown refcode")
+    i = POSITIONS[e["id"]]
+    return templates.TemplateResponse(
+        request,
+        "entry.html",
+        {
+            "e": e,
+            "paper": e["paper"],
+            "fields": FIELDS,
+            "snapshot": SNAPSHOT,
+            "previous": ENTRIES[i - 1]["id"] if i else None,
+            "next": ENTRIES[i + 1]["id"] if i + 1 < len(ENTRIES) else None,
+            "related": [x["id"] for x in ENTRIES if x["pmcid"] == e["pmcid"]],
+        },
+    )
+
+
+@app.get("/api/collection")
+def collection():
+    return SNAPSHOT
+
+
+@app.get("/api/paper-assets/{pmcid}")
+def paper_assets(pmcid: str):
+    if pmcid not in PAPERS:
+        raise HTTPException(404, "Unknown publisher paper")
+    try:
+        return publisher_assets.public_manifest(pmcid)
+    except (ValueError, RuntimeError, OSError):
+        return JSONResponse(
+            {
+                "error": "Publisher files are unavailable or failed provenance verification. Retry after reconnecting the archive."
+            },
+            status_code=503,
+        )
+
+
+@app.get("/api/cif-models/{pmcid}/{name}")
+def cif_models(pmcid: str, name: str):
+    if pmcid not in PAPERS:
+        raise HTTPException(404, "Unknown publisher paper")
+    try:
+        return publisher_assets.cif_models(pmcid, name)
+    except Exception:  # noqa: BLE001 -- never expose parser internals or private paths
+        return JSONResponse(
+            {
+                "error": "This publisher CIF could not be parsed or verified. Use its original publisher download."
+            },
+            status_code=422,
+        )
+
+
+@app.get("/paper-assets/{pmcid}/{name}")
+def paper_asset(pmcid: str, name: str):
+    try:
+        path, asset = publisher_assets.asset_file(pmcid, name)
+    except (ValueError, RuntimeError, OSError):
+        raise HTTPException(404, "Unknown publisher asset") from None
+    return FileResponse(
+        path,
+        filename=Path(asset["name"]).name,
+        content_disposition_type="inline",
+        headers={
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
+        },
+    )
+
+
+@app.get("/crystal-frame.html", response_class=HTMLResponse)
+def crystal_frame(request: Request):
+    return templates.TemplateResponse(request, "crystal-frame.html", {})
+
+
+@app.get("/api/publisher-thumbnail/{pmcid}.svg")
+def publisher_thumbnail(pmcid: str):
+    if pmcid not in PAPERS:
+        raise HTTPException(404, "Unknown publisher paper")
+    try:
+        return FileResponse(publisher_assets.thumbnail(pmcid), media_type="image/svg+xml")
+    except Exception:  # noqa: BLE001 -- never expose parser internals or private paths
+        # A missing publisher preview must never fall back to a CSD depiction.
+        return Response(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><text x="120" y="116" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#6B6B68">Publisher preview unavailable</text><text x="120" y="135" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#6B6B68">Open paper to inspect saved files</text></svg>',
+            media_type="image/svg+xml",
+        )
