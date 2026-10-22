@@ -6,23 +6,27 @@ import numpy as np
 import polars as pl
 from jsonargparse import auto_cli
 
-from dataset.csd import ACTA_E, merge_acta_e, nlm_abbrevs
+from dataset.csd import JOURNAL_NAMES, merge_acta_e
 from dataset.paths import DATA_DIR, REPO_ROOT
 from viz import theme
 
 PLOTS = ["extraction", "records"]
-FIELDS = [
-    "synthesis",
-    "crystallisation",
-    "characterisation",
-    "solid_form",
-    "purpose_and_properties",
-    "summary",
-    "other_notes",
-]
 
-# The two extraction runs, keyed by prompt version; `s0_paper_plots.py` has the same layout.
-RUNS = {"v2-actae-anchored-1": "Acta E (section excerpts)", "v2": "Other journals (full text)"}
+# The paragraphs of a record, named as the README names them (the columns spell them the British
+# way). The `summary` and `other_notes` columns are not topics of the paper, so they are left out.
+FIELDS = {
+    "synthesis": "synthesis",
+    "crystallisation": "crystallization",
+    "characterisation": "characterization",
+    "solid_form": "solid form",
+    "purpose_and_properties": "purpose and properties",
+}
+
+# The two extraction runs, keyed by prompt version, and what each read of its papers.
+RUNS = {
+    "v2-actae-anchored-1": "Acta E (experimental sections)",
+    "v2": "Other journals (full text)",
+}
 
 
 def main(
@@ -69,9 +73,7 @@ def main(
         pl.len().alias("papers"), pl.col("run").sum()
     )
     journals = journals.sort("papers", "journal", descending=True).head(top)
-    named = [j for j in journals["journal"] if j != ACTA_E]
-    abbrevs = nlm_abbrevs(meta, named, papers / "raw") | {ACTA_E: ACTA_E}
-    labels = ["\n".join(textwrap.wrap(abbrevs[j], 22)) for j in journals["journal"]][::-1]
+    labels = ["\n".join(textwrap.wrap(JOURNAL_NAMES[j], 26)) for j in journals["journal"]][::-1]
     total, extracted = journals["papers"].to_numpy()[::-1], journals["run"].to_numpy()[::-1]
     fig, ax = plt.subplots(figsize=(theme.WIDTH, 3.1), layout="constrained")
     bars = {"height": 0.7, "linewidth": 0}
@@ -91,7 +93,7 @@ def main(
 
     # The records of each run: which paragraphs were filled, and how sure the matches are.
     ok = ext.filter(pl.col("extraction_status") == "ok")
-    filled = ok.group_by("prompt_version").agg(pl.col(FIELDS).is_not_null().mean() * 100)
+    filled = ok.group_by("prompt_version").agg(pl.col(*FIELDS).is_not_null().mean() * 100)
     confidence = (
         ext.group_by("prompt_version", "match_confidence")
         .len()
@@ -109,12 +111,12 @@ def main(
         row = filled.row(by_predicate=pl.col("prompt_version") == run, named=True)
         shares = [row[f] for f in FIELDS]
         axes[0].bar(x + 0.4 * i - 0.2, shares, width=0.4, color=theme.PALETTE[i], lw=0, label=label)
-    axes[0].set_xticks(x, [f.replace("_", " ") for f in FIELDS])
-    axes[0].set_ylim(0, 125)
+    axes[0].set_xticks(x, list(FIELDS.values()))
+    axes[0].set_ylim(0, 135)
     axes[0].set_yticks(range(0, 101, 20))
     axes[0].set_ylabel("Records (%)")
     axes[0].set_title("Filled paragraphs")
-    axes[0].legend(fontsize=6, loc="upper center", ncol=2)
+    axes[0].legend(fontsize=6, loc="upper right")
     bottom = np.zeros(len(RUNS))
     levels = {"high": theme.PERIWINKLE[3], "medium": theme.PERIWINKLE[1], "low": theme.BUTTER[0]}
     levels["null"] = "0.8"

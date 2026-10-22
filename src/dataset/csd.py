@@ -23,6 +23,21 @@ NLM_TA = re.compile(r'<journal-id journal-id-type="nlm-ta">([^<]+)<')
 # Crystallographic Communications), so the CSD lists it under two names.
 ACTA_E = "Acta Crystallogr E"
 
+# The ten largest journals of the corpus, named as the README names them; the CSD's names are
+# terse. The figures use these names, so a journal that enters the ten must be added here.
+JOURNAL_NAMES = {
+    ACTA_E: "Acta E",
+    "Chemical Science": "Chemical Science",
+    "J.Am.Chem.Soc.": "Journal of the American Chemical Society",
+    "Angew.Chem.,Int.Ed.": "Angewandte Chemie",
+    "Molecules": "Molecules",
+    "Nat.Commun.": "Nature Communications",
+    "RSC Advances": "RSC Advances",
+    "Inorg.Chem.": "Inorganic Chemistry",
+    "Chem.-Eur.J.": "Chemistry: A European Journal",
+    "ACS Omega": "ACS Omega",
+}
+
 
 def merge_acta_e(journal):
     """Replaces both CSD names of Acta Crystallographica Section E with `ACTA_E`, as `journal`."""
