@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% set active = "explore" %}
-{% block title %}Acta E Explorer{% endblock %}
+{% block title %}Explorer{% endblock %}
 {% block body %}
   <section class="page-head">
-    <h1>Acta E crystals</h1>
+    <h1>Crystal Explorer</h1>
     <p class="muted">{{ "{:,}".format(snapshot.refcodes) }} refcodes · {{ "{:,}".format(snapshot.papers) }} papers. Publisher CIFs, chemical schemes and full source snippets.</p>
     <form class="tools" method="get" action="/explore"><input type="search"
        name="q"
        value="{{ q }}"
-       placeholder="Search refcode, DOI, paper title or journal"
-       aria-label="Search Acta E entries"><select name="status" aria-label="Extraction status"><option value="">All extraction statuses</option>{% for name in statuses %}<option value="{{ name }}" {% if status==name %}selected{% endif %}>{{ name|replace('_', ' ') }} ({{ statuses[name] }})</option>{% endfor %}</select><select name="sort" aria-label="Sort"><option value="refcode">Refcode A–Z</option><option value="year" {% if sort=='year' %}selected{% endif %}>Newest paper</option></select><button class="chip on" type="submit">Search</button><a class="chip reset" href="/explore">Reset</a></form>
+       placeholder="Search molecule, refcode, DOI, paper title or journal"
+       aria-label="Search entries"><select name="journal" aria-label="Journal"><option value="">All journals</option>{% for name, count in journals.items() %}<option value="{{ name }}" {% if journal==name %}selected{% endif %}>{{ name }} ({{ count }})</option>{% endfor %}</select><select name="status" aria-label="Extraction status"><option value="">All extraction statuses</option>{% for name in statuses %}<option value="{{ name }}" {% if status==name %}selected{% endif %}>{{ name|replace('_', ' ') }} ({{ statuses[name] }})</option>{% endfor %}</select><select name="sort" aria-label="Sort"><option value="refcode">Refcode A–Z</option><option value="year" {% if sort=='year' %}selected{% endif %}>Newest paper</option></select><button class="chip on" type="submit">Search</button><a class="chip reset" href="/explore">Reset</a></form>
     <p class="results-line muted small">{{ "{:,}".format(total) }} matching entries · page {{ page }} of {{ pages }}</p>
-    <div class="tiles publisher-tiles">{% for e in entries %}<a class="tile publisher-card" href="/entry/{{ e.id }}"><div class="tile-cell"><img class="crystal-thumb"
+    <div class="tiles publisher-tiles">{% for e in entries %}<a class="tile publisher-card" href="/entry/{{ e.id }}"><div class="tile-cell">{% if e.paper.provenance.get("has_publisher_package", True) %}<img class="crystal-thumb"
      src="/api/publisher-thumbnail/{{ e.pmcid }}.svg"
      alt="Publisher crystal preview for {{ e.id }}"
-     loading="lazy"></div><div class="card-meta"><strong>{{ e.id }}</strong><span class="status-pill {{ e.extraction.status }}">{{ e.extraction.status|replace('_', ' ') }}</span></div><span class="tile-name">{{ e.paper.title }}</span><span class="tile-fact muted">{{ e.paper.journal }} · {{ e.paper.year or 'Year unknown' }}</span><span class="tile-fact doi">{{ e.doi }}</span><span class="card-link">View paper & crystal →</span></a>{% endfor %}</div>
+     loading="lazy">{% else %}<span class="no-cif-preview">{{ e.id }}<small>Publisher CIF not indexed</small></span>{% endif %}</div><div class="card-meta"><strong>{{ e.id }}</strong><span class="status-pill {{ e.extraction.status }}">{{ e.extraction.status|replace('_', ' ') }}</span></div><span class="tile-name">{{ e.name }}</span><span class="tile-fact muted">{{ e.paper.journal }} · {{ e.paper.year or 'Year unknown' }}</span><span class="tile-fact doi">{{ e.doi }}</span><span class="card-link">View paper & crystal →</span></a>{% endfor %}</div>
     {% if not entries %}<p class="empty-state">No entries match this search.</p>{% endif %}
     <nav class="pagination" aria-label="Results pages">{% if previous %}<a class="chip" href="{{ previous }}">← Previous</a>{% endif %}<span>Page {{ page }} of {{ pages }}</span>{% if next %}<a class="chip" href="{{ next }}">Next →</a>{% endif %}</nav>
   </section>

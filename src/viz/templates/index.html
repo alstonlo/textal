@@ -8,8 +8,12 @@
   <section class="hero">
     <h1>Crystals, and how they were grown</h1>
     <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
-    <a class="button" href="/explore">Browse the {{ "{:,}".format(c.acta_entries) }} Acta E entries</a>
+    <a class="button" href="/explore">Browse the {{ "{:,}".format(snapshot.refcodes) }} entries</a>
   </section>
+  <aside class="data-disclaimer">
+    <strong>Data disclosure</strong>
+    <p>We do not disclose CCDC-sourced data other than refcodes. Crystal files, chemical schemes and article content shown here are publisher-provided. Publisher refcodes are shown where available.</p>
+  </aside>
   <section class="strip">
     {% for e in hero %}
       <a class="strip-item" href="/entry/{{ e.id }}">
@@ -19,38 +23,38 @@
                alt="Publisher crystal preview for {{ e.id }}"
                loading="lazy">
         </div>
-        <strong>{{ e.id }}</strong><span>{{ e.paper.title|truncate(75) }}</span></a>
+        <strong>{{ e.id }}</strong><span>{{ e.name|truncate(90) }}<small class="muted">{{ journal_labels.get(e.paper.journal, e.paper.journal) }}</small></span></a>
     {% endfor %}
   </section>
   <section class="numbers">
-    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>Acta E refcodes linked to {{ "{:,}".format(snapshot.papers) }} publisher papers</span></div>
-    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with complete extracted synthesis, crystallisation or experimental snippets</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes across journals, linked to {{ "{:,}".format(snapshot.papers) }} publisher papers</span></div>
+    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with publisher procedure snippets or recorded source excerpts</span></div>
     <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>processed refcodes in this extraction snapshot; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} pending</span></div>
   </section>
   <section class="block collection-note">
-    <h2>Publisher sources, complete Acta E collection</h2>
-    <p class="muted">Browse every linked Acta E refcode, including entries awaiting structured extraction. Each record pairs the full source snippets with supported extraction fields, the publisher CIF and the publisher chemical scheme. CIFs are paper-level files; structure blocks are not automatically matched to individual refcodes.</p>
-    <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Other journals are shown in the aggregate corpus charts below.</p>
+    <h2>Publisher sources, across journals</h2>
+    <p class="muted">Browse Acta E and the additional journals in the combined extraction set. Each record pairs the extracted procedure with the paper, publisher source excerpts and any locally available publisher CIF or chemical scheme. CIFs are paper-level files; structure blocks are not automatically matched to individual refcodes.</p>
+    <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Filter by journal in the Explorer.</p>
   </section>
   <section class="block">
     <h2>The corpus</h2>
-    <p class="muted">Every CSD entry cites the paper that reported it. We download the cited papers that are open access in PubMed Central, which serves each paper's full text as structured XML together with its licence. So the text needs no optical character recognition, and we know the terms under which each paper can be reused.</p>
-    <p class="small muted">The corpus charts retain the earlier overview snapshot. Current Acta E coverage is shown above.</p>
+    <p class="muted">Article identities and publication years come from publisher records and Europe PMC. The charts describe the papers and refcode links currently imported into this browser.</p>
+    <p class="small muted">Licence labels reflect indexed publisher evidence; missing terms are shown as not indexed.</p>
     <div class="charts">
       <figure>
-        <figcaption>CSD entries each year: <span class="key" style="--key: var(--bar-light)">all</span> and <span class="key" style="--key: var(--bar)">with an open-access paper in PubMed Central</span>. <span class="muted">Our copy of the CSD has a cutoff in 2025, so the 2025 bar is incomplete.</span></figcaption>
+        <figcaption>Refcode links by the paper’s publication year</figcaption>
         <div class="plot" id="coverage"></div>
       </figure>
       <figure>
-        <figcaption>Open-access CSD papers in PubMed Central each year</figcaption>
+        <figcaption>Imported papers by publication year</figcaption>
         <div class="plot" id="pmc_years"></div>
       </figure>
       <figure>
-        <figcaption>The twelve journals with the most open-access papers</figcaption>
+        <figcaption>Journals represented in the imported papers</figcaption>
         <div class="plot tall" id="journals"></div>
       </figure>
       <figure>
-        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} open-access papers</figcaption>
+        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} imported papers</figcaption>
         <div class="plot tall" id="licenses"></div>
       </figure>
     </div>

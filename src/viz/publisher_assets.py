@@ -36,7 +36,11 @@ ROOTS = (
 
 def configure(papers):
     global PAPERS
-    PAPERS = papers
+    PAPERS = {
+        p["pmcid"]: p
+        for p in papers.values()
+        if p.get("pmcid") and p.get("provenance", {}).get("has_publisher_package", True)
+    }
     CACHE.mkdir(parents=True, exist_ok=True)
 
 
