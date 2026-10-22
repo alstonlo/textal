@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set active = "explore" %}
+{% block title %}Explorer{% endblock %}
+{% block body %}
+<section class="page-head">
+  <h1>Drug crystals</h1>
+  <p class="muted">As a demo, we process the {{ counts.drug_entries }} crystals of the CSD Drug Subset that are reported in {{ counts.drug_papers }} open-access papers of Acta Crystallographica Section E. Each tile is the filled unit cell at the same scale and angle.</p>
+</section>
+<section class="tools">
+  <label class="sr-only" for="q">Search</label>
+  <input id="q" type="search" placeholder="Search by drug, refcode, formula or journal">
+  <div class="chips" id="toggles">
+    <button type="button" class="chip{% if not form %} on{% endif %}" data-form="">All</button>
+    {% for f in forms %}<button type="button" class="chip{% if form == f %} on{% endif %}" data-form="{{ f }}">{{ names[f] }}</button>{% endfor %}
+    <button type="button" class="chip{% if form == 'neat' %} on{% endif %}" data-form="neat">{{ names.neat }}</button>
+  </div>
+  <select id="sort" aria-label="Order"><option value="name">By drug</option><option value="id">By refcode</option><option value="year">By year</option></select>
+  <span class="count muted" id="count"></span>
+</section>
+<section class="tiles" id="cards">
+  {% for e in entries %}
+  <a class="tile" href="/entry/{{ e.id }}"
+     data-name="{{ e.name|lower }}" data-id="{{ e.id }}" data-year="{{ e.year or 0 }}"
+     data-forms="{{ e.forms|join(' ') or 'neat' }}"
+     data-search="{{ (e.name ~ ' ' ~ e.id ~ ' ' ~ (e.formula or '') ~ ' ' ~ (e.chemical_name or '') ~ ' ' ~ (e.journal or '') ~ ' ' ~ (e.drugbank_ids|join(' ')))|lower }}">
+    <span class="tile-cell">{{ e.cell|safe }}</span>
+    <span class="tile-name">{{ e.name }}</span>
+    <span class="tile-fact muted">{{ e.id }}{% if e.forms %}, {{ e.forms|join(", ") }}{% endif %}{% if e.space_group %}, {{ e.space_group }}{% endif %}</span>
+  </a>
+  {% endfor %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="/static/explore.js"></script>
+{% endblock %}

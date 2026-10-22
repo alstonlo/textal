@@ -8,6 +8,23 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the
   report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes a
   figure as PNG).
+  - `app.py`: the website, a FastAPI app; run it with `pixi run web` and
+    open http://localhost:8010. It reads only `assets/`, never `data/`. The landing page shows the
+    statistics of the corpus; `/explore` lists the entries of the CSD
+    drug subset in Acta Crystallographica Section E papers, each as its filled unit cell drawn
+    flat by `crystal.py` (a small CIF parser that applies the symmetry operators), and
+    `/entry/<refcode>` shows one entry: its crystal structure (the CIF, drawn by py3Dmol in
+    `crystal.py`), its molecule (drawn by RDKit), its CSD metadata, its paper and its extracted
+    record.
+  - `assets/` (untracked but for `.gitkeep` and `stats.json`, as the entry tables hold CSD
+    data): the tables of the website,
+    written by `scripts/runs/viz/s0_assets.py`, so that the website needs neither the CSD
+    metadata nor the downloaded papers.
+    `entries.parquet` has one row per entry: its CIF, CSD metadata, DrugBank drugs, and its
+    paper's metadata and Markdown text (CC BY papers only). `extractions.parquet` has its
+    extracted record (in the schema of `dataset.extraction_schema`). `stats.json` has the corpus
+    statistics of the landing page.
+  - `templates/` (Jinja) and `static/` (CSS and the page scripts): the pages of the website.
 - `scripts/`: the scripts, run from the repository root. [`Snakefile`](../scripts/Snakefile)
   names which script produces which file from which input, and runs them in order; see
   [`scripts/README.md`](../scripts/README.md).
@@ -15,6 +32,7 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     extraction.
     - `bib/`: the bibliography, i.e. the papers of the CSD entries: downloads the open-access
       papers from PubMed Central (PMC), with the PMCID of each DOI.
+    - `viz/`: writes the tables of the website to `src/viz/assets/`.
   - `analysis/`: the scripts that only read the data: they print statistics (e.g., the numbers
     in [`csd-journal-stats.md`](csd-journal-stats.md)) or plot it (to `results/`).
 - `data/` (untracked): the downloaded metadata, PDFs, OCR output and extracted records.
@@ -42,10 +60,12 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
     `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
     finished, so a stopped run can resume.
-  - `viz/`: the tables behind the website, made once by hand and taken as given, e.g.
-    `csd_drugs_with_paper.parquet`: the CSD entries of the drug subset (one row per refcode and
-    DrugBank ID) that have a downloaded paper, with their CCDC number, CIF and the DOI and folder
-    of the paper.
+  - `viz/`: the inputs of the website's tables (`src/viz/assets/`), made by hand and taken as
+    given: `csd_drugs_with_paper.parquet`, the CSD entries of the drug subset (one row per refcode
+    and DrugBank ID) that have a downloaded paper, with their CCDC number, CIF and the DOI and
+    folder of the paper; and `priority-extractions.parquet`, the extracted records of those
+    entries whose paper is in Acta Crystallographica Section E (in the schema of
+    `dataset.extraction_schema`), which decides the entries the website shows.
 - `results/`: the plots (PNG), one folder per data folder they describe, e.g. `papers/plots/`
   for `data/papers/`.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).

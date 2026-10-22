@@ -2,7 +2,13 @@
 name = "csd-textal"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = ["pymupdf4llm<1"]
+dependencies = [
+    "jupyter>=1.1.1",
+    "openai>=2",
+    "polars>=2.0.0",
+    "pymupdf4llm<1",
+    "tqdm>=4.70.1,<5",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -28,6 +34,12 @@ seaborn = ">=0.13,<0.14"
 snakemake = ">=9,<10"
 numpy = ">=2.3,<2.4"
 pillow = "<13"
+fastapi = ">=0.156.4,<0.157"
+uvicorn = ">=0.54.0,<0.55"
+plotly = ">=7.1.0,<8"
+jinja2 = ">=3.1.6,<4"
+rdkit = ">=2026.9.1,<2027"
+py3dmol = ">=2.5.4,<3"
 
 [tool.pixi.pypi-dependencies]
 csd-textal = { path = ".", editable = true }
@@ -42,6 +54,9 @@ mineru = { version = ">=4.0.12,<5", extras = ["full"] }
 
 [tool.pixi.environments]
 ocr = ["ocr"]
+
+[tool.pixi.tasks]
+web = "uvicorn viz.app:app --reload --port 8010"
 
 [tool.ruff]
 target-version = "py312"

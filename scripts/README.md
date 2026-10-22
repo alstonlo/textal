@@ -9,6 +9,7 @@ for how to run them in order.
 pixi install
 pixi run snakemake -s scripts/Snakefile -n          # what would run
 pixi run snakemake -s scripts/Snakefile -j1 all     # the plots, and the data they need
+pixi run snakemake -s scripts/Snakefile -j1 assets  # the tables of the website
 ```
 
 `runs/` holds the scripts that make the data, `analysis/` those that only read it. The analysis

@@ -1,3 +1,6 @@
+import re
+from collections import Counter
+
 import polars as pl
 
 # Journal names that the CSD uses for sources that are not journal papers.
@@ -12,6 +15,9 @@ NOT_JOURNALS = [
 
 # CSD journals whose full name matches a different DOAJ journal of the same name.
 DOAJ_FALSE_MATCHES = ["Synthesis", "Matter"]
+
+# The NLM title abbreviation of a paper's journal, as in https://www.ncbi.nlm.nih.gov/nlmcatalog/.
+NLM_TA = re.compile(r'<journal-id journal-id-type="nlm-ta">([^<]+)<')
 
 
 def read_papers(path):
@@ -108,3 +114,29 @@ def summarize_dois(df):
         p99=pl.col("entries").quantile(0.99),
     )
     return summary, counts.top_k(5, by="entries")
+
+
+def nlm_abbrevs(meta, journals, raw, sample=25):
+    """Maps CSD journal names to their NLM title abbreviations, read from the papers' PMC XML.
+
+    CSD journal names are terse (e.g. `J.Am.Chem.Soc.`). A few papers carry another journal's tag,
+    so each journal takes the most common tag among `sample` of its papers.
+
+    Args:
+        meta: The papers, with columns `journal`, `dir` and `files` (`papers/metadata.parquet`).
+        journals: The CSD journal names to map.
+        raw: The folder of the downloaded papers (`papers/raw/`).
+        sample: How many papers of each journal to read.
+
+    Returns:
+        A dict from CSD name to NLM abbreviation, or to the CSD name when no paper has the tag.
+    """
+    out = {}
+    for name in journals:
+        has_xml = (pl.col("journal") == name) & pl.col("files").list.contains("paper.xml")
+        dirs = meta.filter(has_xml)["dir"]
+        tags = [NLM_TA.search((raw / d / "paper.xml").read_text()) for d in dirs[:sample]]
+        tags = [m.group(1) for m in tags if m]
+        out[name] = Counter(tags).most_common(1)[0][0] if tags else name
+    assert len(set(out.values())) == len(out), out
+    return out

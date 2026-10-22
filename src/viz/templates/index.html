@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% set active = "home" %}
+{% set c = stats.counts %}
+{% block head %}
+<script src="https://cdn.plot.ly/plotly-4.1.1.min.js"></script>
+{% endblock %}
+{% block body %}
+<section class="hero">
+  <h1>Crystals, and how they were grown</h1>
+  <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
+  <a class="button" href="/explore">Browse the {{ c.drug_entries }} demo crystals</a>
+</section>
+
+<section class="strip">
+  {% for e in hero %}
+  <a class="strip-item" href="/entry/{{ e.id }}">{{ e.cell|safe }}<span>{{ e.name }}</span></a>
+  {% endfor %}
+</section>
+
+<section class="numbers">
+  <div><b>{{ "{:,}".format(c.entries) }}</b><span>entries in the Cambridge Structural Database, each with its paper's reference</span></div>
+  <div><b>{{ "{:,}".format(c.pmc_papers) }}</b><span>of those papers are open access in PubMed Central, covering {{ "{:,}".format(c.pmc_entries) }} entries</span></div>
+  <div><b>{{ c.drug_entries }}</b><span>crystals of {{ c.drugs }} drugs from the CSD Drug Subset, reported in {{ c.drug_papers }} open-access papers of Acta Crystallographica Section E, which we process as a demo</span></div>
+</section>
+
+<section class="block">
+  <h2>The corpus</h2>
+  <p class="muted">Every CSD entry cites the paper that reported it. We download the cited papers that are open access in PubMed Central, which serves each paper's full text as structured XML together with its licence. So the text needs no optical character recognition, and we know the terms under which each paper can be reused.</p>
+  <div class="charts">
+    <figure><figcaption>CSD entries each year: <span class="key" style="--key: var(--bar-light)">all</span> and <span class="key" style="--key: var(--bar)">with an open-access paper in PubMed Central</span>. <span class="muted">Our copy of the CSD has a cutoff in 2025, so the 2025 bar is incomplete.</span></figcaption><div class="plot" id="coverage"></div></figure>
+    <figure><figcaption>Open-access CSD papers in PubMed Central each year</figcaption><div class="plot" id="pmc_years"></div></figure>
+    <figure><figcaption>The twelve journals with the most open-access papers</figcaption><div class="plot tall" id="journals"></div></figure>
+    <figure><figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} open-access papers</figcaption><div class="plot tall" id="licenses"></div></figure>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+// Each trace names the CSS token of its colour in `meta`, so the stylesheet decides the bar colours.
+const FIGURES = {{ stats.figures|tojson }};
+function drawCharts() {
+  const tokens = getComputedStyle(document.documentElement);
+  for (const [id, fig] of Object.entries(FIGURES)) {
+    for (const t of fig.data) t.marker = {...t.marker, color: tokens.getPropertyValue(`--${t.meta}`).trim()};
+    Plotly.newPlot(id, fig.data, fig.layout, {responsive: true, displayModeBar: false});
+  }
+}
+// Plotly sizes the margins from the tick labels, so it draws again once Inter has loaded.
+drawCharts();
+document.fonts.ready.then(drawCharts);
+</script>
+{% endblock %}
