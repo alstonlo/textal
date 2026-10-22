@@ -210,7 +210,7 @@ def parse(raw, out, min_chars):
 
 def main(
     papers: str = str(DATA_DIR / "papers"),
-    workers: int = 96,
+    workers: int = 48,
     min_chars_per_page: int = 200,
     resume: bool = True,
 ):
