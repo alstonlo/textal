@@ -23,7 +23,7 @@
                alt="Publisher crystal preview for {{ e.id }}"
                loading="lazy">
         </div>
-        <strong>{{ e.id }}</strong><span>{{ e.name|truncate(90) }}<small class="muted">{{ journal_labels.get(e.paper.journal, e.paper.journal) }}</small></span></a>
+        <strong>{{ e.id }}</strong><span>{{ e.name|truncate(90) }}</span></a>
     {% endfor %}
   </section>
   <section class="numbers">

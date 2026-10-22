@@ -47,6 +47,7 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
       active === 0 && docs[active].main
         ? "Full article text from the supplied publisher-text archive."
         : "Publisher supplementary text from the supplied archive.";
+    status.classList.add("sr-only");
     highlight();
     host.scrollTop = 0;
   }
