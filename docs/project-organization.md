@@ -30,6 +30,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
   [`scripts/README.md`](../scripts/README.md).
   - `runs/`: the scripts that make the data, one folder per stage, from CCDC metadata download to
     extraction.
+    - `csd/`: exports the metadata of every CSD entry with the CSD Python API, which needs a CCDC
+      licence and runs in its own pixi environment (`pixi run -e csd ...`).
     - `bib/`: the bibliography, i.e. the papers of the CSD entries: downloads the open-access
       papers from PubMed Central (PMC), with the PMCID of each DOI.
     - `viz/`: writes the tables of the website to `src/viz/assets/`.

@@ -33,12 +33,36 @@ Install it in its own environment with `pixi install -e ocr`.
 
 ## Usage
 
-### Input data
+### CSD Download
 
 The pipeline starts from `data/raw/csd_metadata.full.parquet`, which contains metadata for every
 CSD entry, including its refcode (entry identifier), compound name, journal and digital object
 identifier (DOI). Exporting this metadata requires a licence from the Cambridge Crystallographic
 Data Centre (CCDC), so it is not included in this repository.
+
+To export it yourself, first download the CSD data from the [CCDC downloads
+page](https://www.ccdc.cam.ac.uk/support-and-resources/csdsdownloads/), which asks for the site
+number and confirmation code of your licence, and run its installer. Then install the CSD Python
+API. It lives in its own environment because it pins older versions of NumPy, pandas and SciPy:
+
+```bash
+pixi install -e csd
+```
+
+Next, write your CCDC licence code to a file named `.env` at the repository root (git ignores this
+file). The second line is needed only if the CCDC installer did not record the location of the CSD
+data in `~/.config/CCDC/CSD.ini`:
+
+```bash
+CCDC_LICENSING_CONFIGURATION=la-code;<your-licence-code>
+CSD_DATA_DIRECTORY=<folder of the CSD data>
+```
+
+Finally, export the metadata, which reads every CSD entry:
+
+```bash
+pixi run -e csd python scripts/runs/csd/s0_metadata.py
+```
 
 ### Build the corpus
 
