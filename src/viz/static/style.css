@@ -1189,3 +1189,8 @@ footer a:hover {
 .name-source {
   margin: -8px 0 20px;
 }
+.strip-item span,
+.tile-name,
+.entry-head h1 {
+  overflow-wrap: anywhere;
+}
