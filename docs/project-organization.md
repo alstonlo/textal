@@ -16,19 +16,28 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `data/` (untracked): the downloaded metadata, PDFs, OCR output and extracted records.
   - `raw/`: the files as downloaded, before any processing (e.g., `csd_metadata.full.parquet`, the
     metadata of every CSD entry).
-  - `papers/`: one folder `<DOI>/` per paper, i.e. `<publisher prefix>/<suffix>/`, such as
-    `10.1107/s2056989015009986/`. The folder name is the DOI itself (lowercase), except that the
-    characters of the suffix that are not safe in a folder name become `_`, so the true DOI is in
-    `metadata.parquet`. The paper's folder never changes, unlike its title or year, so later
-    stages can point at it. Its `raw/` holds the paper as
-    downloaded: `paper.pdf`, `paper.xml` (the full text from PMC, indented to be readable) and the
-    supplementary files that are text documents (PDF, Word, RTF, ODT, plain text, TeX or HTML),
-    `supplementary.<ext>`, or `supplementary-<n>.<ext>` when there are several. Other
-    supplementary files (data such as CIFs, archives, images, videos) are not downloaded.
+  - `papers/`: one folder per stage (`raw/`, then e.g. `ocr/`), each holding one folder `<DOI>/`
+    per paper, i.e. `<publisher prefix>/<suffix>/`, such as `10.1107/s2056989015009986/`. The
+    folder name is the DOI itself (lowercase), except that the characters of the suffix that are
+    not safe in a folder name become `_`, so the true DOI is in `metadata.parquet`. A paper's
+    folder never changes, unlike its title or year, so every stage can point at it.
+    - `raw/<DOI>/`: the paper as downloaded: `paper.pdf`, `paper.xml` (the full text from PMC,
+      indented to be readable) and the supplementary files that are text documents (PDF, Word,
+      RTF, ODT, plain text, TeX or HTML), `supplementary.<ext>`, or `supplementary-<n>.<ext>`
+      when there are several. Other supplementary files (data such as CIFs, archives, images,
+      videos) are not downloaded.
+    - `parsed/<DOI>/`: the same files as Markdown, `paper.md` (from `paper.xml`, through pandoc
+      and the filter `s1_parse.lua`, which keeps HTML out of the Markdown) and
+      `supplementary*.md` (PDFs through PyMuPDF4LLM, which reads the text layer and drops the
+      images; the rest through pandoc). `paper.pdf` is not parsed, since the XML has the same
+      text.
     `papers/metadata.parquet` has one row per CSD paper in PMC, retracted papers left out: its
-    folder (`dir`), DOI, the CSD refcodes of its entries, its licence and what was
-    downloaded (the columns are in `SCHEMA` of `scripts/runs/bib/s0_download.py`).
-    `papers/download.jsonl` logs each downloaded paper, so a stopped download can resume.
+    folder (`dir`, relative to a stage folder), DOI, the CSD refcodes of its entries, its licence
+    and what was downloaded (the columns are in `SCHEMA` of `scripts/runs/bib/s0_download.py`).
+    `papers/parsed.parquet` has one row per downloaded paper: the Markdown files, their sizes,
+    the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
+    `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
+    finished, so a stopped run can resume.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 

@@ -51,6 +51,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lxml-6.1.3-py312h663fcd5_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/ncurses-6.6-hdb14827_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.6.5-h781a0a9_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.12.1-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/polars-2.0.0-pyh3138b34_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/polars-runtime-32-2.0.0-py311hb519a9e_2.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pysocks-1.7.1-pyha55dd90_7.conda
@@ -71,7 +72,10 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/validators-0.36.0-pyh5ded981_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/yaml-0.2.5-hebe6cf0_3.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_7.conda
+      - pypi: https://files.pythonhosted.org/packages/c7/06/dace3e27af26690cb20bead80dbac42941b0841eb689b8aabbd67dde16f0/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/2b/67/4394de2e5967d80a9b01ec323049163410b3553185c42dea0c346fa27a41/pymupdf4llm-0.3.4-py3-none-any.whl
       - pypi: git+https://github.com/alstonlo/recess.git#13fbb94b781a8e0144ca41706f3e170eee1d5e57
+      - pypi: https://files.pythonhosted.org/packages/99/55/db07de81b5c630da5cbf5c7df646580ca26dfaefa593667fc6f2fe016d2e/tabulate-0.10.0-py3-none-any.whl
       - pypi: ./
   ocr:
     channels:
@@ -162,6 +166,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/nss-3.118-h445c969_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openjpeg-2.5.4-heb1ab33_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/openssl-3.6.5-h781a0a9_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.12.1-ha770c72_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pcre2-10.47-h8b3dc9c_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/pixman-0.46.4-h54a6638_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/polars-2.0.0-pyh3138b34_2.conda
@@ -372,6 +377,8 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/71/46/17f022dd3e953bf20a04a028a21ec746d942f8d2af30fa0f124fa0e6a684/pygments-2.21.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/50/ca/44de4e75f8aadc457f0634be3b542815078ded46dca30efb960edeecad6e/pyjwt-2.15.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/e7/06/3d67bd912ef337aa4856b466121d03f304aa1bb4d804f9298b6227cd227e/pylatexenc-2.11-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/c7/06/dace3e27af26690cb20bead80dbac42941b0841eb689b8aabbd67dde16f0/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl
+      - pypi: https://files.pythonhosted.org/packages/2b/67/4394de2e5967d80a9b01ec323049163410b3553185c42dea0c346fa27a41/pymupdf4llm-0.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/ca/49/98da271686e00676f41b1197ba5431ddc341b96d8efb68ea9d68e2b0d870/pynvvideocodec-2.0.4-cp312-cp312-manylinux_2_28_x86_64.whl
       - pypi: https://files.pythonhosted.org/packages/1b/4d/c9d2d67f204eff463237a1a8f5e25a6923b7b1043982b91fcaf104c8ef60/pypdf-6.21.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/4f/a3/c9cc797fc8bdfb8f37b9b0f8b9d02a5fc196b2015f408d53624cab5b0519/pypdfium2-5.14.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl
@@ -890,7 +897,9 @@ packages:
 - pypi: ./
   name: crystalog
   version: 0.1.0
-  sha256: f309144e36273a0b2de3735566f7dad9830d7e774fffb3ede1f987e13912bd45
+  sha256: fe5eb565ccc1e4cd299f3180d695fe478e61079368e05fc40707e4f917ab4133
+  requires_dist:
+  - pymupdf4llm<1
   requires_python: '>=3.12,<3.13'
 - pypi: https://files.pythonhosted.org/packages/c2/f8/332443cf969734551891cdbd93657eaeaf747ac2b7dd73feb3422701b02b/cuda_bindings-13.4.4-cp312-cp312-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl
   name: cuda-bindings
@@ -4087,6 +4096,14 @@ packages:
   - xlsxwriter>=3.2.0 ; extra == 'all'
   - zstandard>=0.23.0 ; extra == 'all'
   requires_python: '>=3.11'
+- conda: https://conda.anaconda.org/conda-forge/linux-64/pandoc-3.12.1-ha770c72_0.conda
+  sha256: 73a73cc6f5506fcce335bcc9277d89c07a72bcd78417d494484555bd07a1f443
+  md5: c426f0a6202837347387cc6fdd4c381e
+  license: GPL-2.0-or-later
+  license_family: GPL
+  purls: []
+  size: 22982282
+  timestamp: 1791464889172
 - pypi: https://files.pythonhosted.org/packages/42/32/658973117bf0fd82a24abbfb94fe73a5e86216e49342985e10acce54775a/partial_json_parser-0.2.1.1.post7-py3-none-any.whl
   name: partial-json-parser
   version: 0.2.1.1.post7
@@ -4430,6 +4447,20 @@ packages:
   name: pylatexenc
   version: '2.11'
   sha256: e78e7391d6c104f1ed150e21cfaa58016cdb50aa54406a2eecb793649ffdfdd0
+- pypi: https://files.pythonhosted.org/packages/c7/06/dace3e27af26690cb20bead80dbac42941b0841eb689b8aabbd67dde16f0/pymupdf-1.28.2-cp310-abi3-manylinux_2_28_x86_64.whl
+  name: pymupdf
+  version: 1.28.2
+  sha256: 397d6715c1f0df7548a92d0afd8ce370fc48fa47aeefac16be2bc04a16a8227f
+  requires_python: '>=3.10'
+- pypi: https://files.pythonhosted.org/packages/2b/67/4394de2e5967d80a9b01ec323049163410b3553185c42dea0c346fa27a41/pymupdf4llm-0.3.4-py3-none-any.whl
+  name: pymupdf4llm
+  version: 0.3.4
+  sha256: 0517492f82af978541162ade20fc54649cdca52acd478e33b97cb6171d69956f
+  requires_dist:
+  - pymupdf>=1.27.1
+  - tabulate
+  - pymupdf-layout>=1.27.1 ; extra == 'layout'
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/ca/49/98da271686e00676f41b1197ba5431ddc341b96d8efb68ea9d68e2b0d870/pynvvideocodec-2.0.4-cp312-cp312-manylinux_2_28_x86_64.whl
   name: pynvvideocodec
   version: 2.0.4
