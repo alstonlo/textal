@@ -18,7 +18,7 @@ def main(
     out: str = str(REPO_ROOT / "assets"),
     first_year: int = 2008,
 ):
-    """Plots the figures of the README, from `<papers>/metadata.parquet` and `parsed.parquet`.
+    """Plots the corpus figures, from `<papers>/metadata.parquet` and `parsed.parquet`.
 
     Writes `<out>/<plot>.png` for each plot in `PLOTS`: the papers per year since `first_year`
     stacked by journal, and the licences and files of the downloaded papers.
