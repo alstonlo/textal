@@ -70,8 +70,8 @@ pixi run -e csd python scripts/runs/csd/s0_metadata.py
 
 ### Build the corpus
 
-This command downloads the papers from PMC, converts them to Markdown and plots corpus
-statistics. The download takes several hours and about 200 GB of disk space. Rerunning an
+This command downloads the papers from PMC, converts them to Markdown and plots the figures of
+this README. The download takes several hours and about 200 GB of disk space. Rerunning an
 interrupted download resumes it.
 
 ```bash
@@ -87,7 +87,7 @@ resumes it.
 ```bash
 export LITELLM_API_KEY=...
 pixi run python -m dataset.extraction_stream --sample 200 --run data/runs/pilot200   # a sample
-pixi run python -m dataset.extraction_stream --run data/runs/corpus                 # every paper
+pixi run python -m dataset.extraction_stream --run data/runs/corpus                  # every paper
 ```
 
 ### Website

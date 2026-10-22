@@ -1,8 +1,8 @@
-# The chain from the CSD metadata to the plots: the metadata of every CSD entry, exported with the
-# CSD Python API (which needs a CCDC licence, see the README), then the open-access papers of the
-# CSD entries, downloaded from PubMed Central (PMC), then parsed to Markdown, then plotted. The
-# tables of the website (`assets`) are not part of `all`, since their inputs in `data/viz/` are
-# made by hand.
+# The chain from the CSD metadata to the figures of the README: the metadata of every CSD entry,
+# exported with the CSD Python API (which needs a CCDC licence, see the README), then the
+# open-access papers of the CSD entries, downloaded from PubMed Central (PMC), then parsed to
+# Markdown, then plotted. The tables of the website (`assets`) are not part of `all`, since their
+# inputs in `data/viz/` are made by hand.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -14,16 +14,16 @@
 # Run from the repo root, where every path below is anchored:
 #
 #     pixi run snakemake -s scripts/Snakefile -n          # what would run
-#     pixi run snakemake -s scripts/Snakefile -j1 all     # the plots, and the data they need
+#     pixi run snakemake -s scripts/Snakefile -j1 all     # the figures, and the data they need
 
 PAPERS = "data/papers"
-PLOTS = ["journals", "refcodes", "years", "downloads", "chars"]
+PLOTS = ["years", "downloads"]
 
 
 rule all:
     default_target: True
     input:
-        expand("results/papers/plots/{plot}.png", plot=PLOTS),
+        expand("docs/assets/{plot}.png", plot=PLOTS),
 
 
 # The CSD Python API lives in its own pixi environment, `csd`.
@@ -57,7 +57,7 @@ rule plot_papers:
         f"{PAPERS}/metadata.parquet",
         f"{PAPERS}/parsed.parquet",
     output:
-        expand("results/papers/plots/{plot}.png", plot=PLOTS),
+        expand("docs/assets/{plot}.png", plot=PLOTS),
     shell:
         "python scripts/analysis/s0_paper_plots.py"
 

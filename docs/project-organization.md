@@ -36,7 +36,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
       papers from PubMed Central (PMC), with the PMCID of each DOI.
     - `viz/`: writes the tables of the website to `src/viz/assets/`.
   - `analysis/`: the scripts that only read the data: they print statistics (e.g., the numbers
-    in [`csd-journal-stats.md`](csd-journal-stats.md)) or plot it (to `results/`).
+    in [`csd-journal-stats.md`](csd-journal-stats.md)) or plot the figures of the README (to
+    `docs/assets/`).
 - `data/` (untracked): the downloaded metadata, PDFs, OCR output and extracted records.
   - `raw/`: the files as downloaded, before any processing (e.g., `csd_metadata.full.parquet`, the
     metadata of every CSD entry).
@@ -68,8 +69,6 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     folder of the paper; and `priority-extractions.parquet`, the extracted records of those
     entries whose paper is in Acta Crystallographica Section E (in the schema of
     `dataset.extraction_schema`), which decides the entries the website shows.
-- `results/`: the plots (PNG), one folder per data folder they describe, e.g. `papers/plots/`
-  for `data/papers/`.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 
