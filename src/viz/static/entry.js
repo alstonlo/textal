@@ -46,8 +46,8 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
     );
     status.textContent =
       active === 0 && docs[active].main
-        ? "Full article text from the supplied publisher-text archive."
-        : "Publisher supplementary text from the supplied archive.";
+        ? "Full article text from the publisher archive."
+        : "Supplementary text from the publisher archive.";
     status.classList.add("sr-only");
     highlight();
     host.scrollTop = 0;
@@ -74,12 +74,12 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
       draw();
     } else {
       status.textContent =
-        "Publisher excerpts shown; full article text is not available locally.";
+        "Only excerpts are shown; the full article text is not stored here.";
       highlight();
     }
   } catch {
     status.textContent =
-      "Publisher excerpts shown; full article text could not be loaded.";
+      "Only excerpts are shown; the full article text could not be loaded.";
     highlight();
   }
   for (const quote of document.querySelectorAll(".record-fields blockquote")) {

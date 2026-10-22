@@ -32,14 +32,14 @@ window.PaperMedia = (() => {
       abort = new AbortController(),
       state = { root, abort, paper, ref, frame: null };
     current = state;
-    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">Publisher CIFs and chemical schemes from the downloaded article package. Files are paper-level assets; a structure block is not automatically assigned to the selected CSD refcode.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
+    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">CIFs and chemical schemes from the publisher’s article package. They belong to the whole paper, so no structure block is matched to this refcode automatically.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
     const status = root.querySelector(".media-asset-status");
     if (!paper.pmcid) {
       status.textContent = "No PMC archive link";
       root.querySelector(".crystal-body").innerHTML =
-        '<p class="media-empty">This paper has no linked downloaded PMC package.</p>';
+        '<p class="media-empty">No PMC package was downloaded for this paper.</p>';
       root.querySelector(".figure-body").innerHTML =
-        '<p class="media-empty">No saved package is available to resolve its chemical scheme.</p>';
+        '<p class="media-empty">Without the package, no chemical scheme is available.</p>';
       return;
     }
     try {
@@ -61,14 +61,14 @@ window.PaperMedia = (() => {
       renderCrystal(state);
       renderScheme(state);
       root.querySelector(".media-provenance-body").innerHTML =
-        `<p>Original file bytes were checked against the archive’s SHA256 receipts. Gemmi parses the original CIF into coordinates, elements, occupancies, unit cell and symmetry operators for 3Dmol display. Safe internal atom labels prevent browser-parser errors; original labels and all original download bytes are preserved.</p>${[...data.cifs, ...state.schemes].map((f) => `<div><strong>${esc(f.name)}</strong><p class="source-path">${esc(f.source_url)}<br>SHA256 ${esc(f.sha256)}</p></div>`).join("")}`;
+        `<p>Each file was checked against the SHA256 hash recorded when it was downloaded. Gemmi parses the original CIF into coordinates, elements, occupancies, the unit cell and the symmetry operators, which 3Dmol then displays. Atom labels are renamed for the viewer; the original labels and the downloaded files are unchanged.</p>${[...data.cifs, ...state.schemes].map((f) => `<div><strong>${esc(f.name)}</strong><p class="source-path">${esc(f.source_url)}<br>SHA256 ${esc(f.sha256)}</p></div>`).join("")}`;
     } catch (error) {
       if (token !== serial || error.name === "AbortError") return;
       status.textContent = "Assets unavailable";
       root.querySelector(".crystal-body").innerHTML =
-        `<p class="media-empty">${esc(error.message)}</p><button class="button media-retry">Retry assets</button>`;
+        `<p class="media-empty">${esc(error.message)}</p><button class="button media-retry">Retry</button>`;
       root.querySelector(".figure-body").innerHTML =
-        '<p class="media-empty">The scheme will load when this paper’s archive can be read.</p>';
+        '<p class="media-empty">The chemical scheme will load once this paper’s archive can be read.</p>';
       root.querySelector(".media-retry").onclick = () =>
         mount(root, paper, ref);
     }
@@ -78,7 +78,7 @@ window.PaperMedia = (() => {
       files = state.data.cifs;
     if (!files.length) {
       host.innerHTML =
-        '<p class="media-empty">No coordinate-bearing CIF was found in this saved package.</p>';
+        '<p class="media-empty">The package holds no CIF with atomic coordinates.</p>';
       return;
     }
     host.innerHTML = `<div class="tools"${files.length > 1 ? "" : " hidden"}><select class="cif-file" aria-label="CIF file">${files.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div><iframe class="crystal-frame" title="Interactive publisher CIF crystal viewer"></iframe><div class="crystal-downloads"></div><p class="media-hint">The CIF belongs to the paper, so pick the structure block that matches this refcode when the file holds several compounds or forms. Bonds are inferred from the coordinates.</p>`;
@@ -109,7 +109,7 @@ window.PaperMedia = (() => {
       figs = state.schemes;
     if (!figs.length) {
       host.innerHTML =
-        '<p class="media-empty">No publisher chemical scheme was found in this saved package.</p>';
+        '<p class="media-empty">The package holds no chemical scheme.</p>';
       return;
     }
     host.innerHTML = `${figs.length > 1 ? `<div class="tools"><select aria-label="Chemical scheme">${figs.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div>` : ""}<figure class="publisher-figure"></figure>`;

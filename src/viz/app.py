@@ -347,7 +347,7 @@ def paper_assets(pmcid: str):
     except (ValueError, RuntimeError, OSError):
         return JSONResponse(
             {
-                "error": "Publisher files are unavailable or failed provenance verification. Retry after reconnecting the archive."
+                "error": "The publisher files are unavailable or do not match their recorded hashes. Retry after reconnecting the archive."
             },
             status_code=503,
         )

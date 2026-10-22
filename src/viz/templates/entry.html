@@ -21,15 +21,15 @@
     {% if paper.provenance.get("has_publisher_package", True) %}<div id="publisher-media"
      data-pmcid="{{ paper.pmcid or '' }}"
      data-doi="{{ e.doi }}"
-     data-ref="{{ e.id }}"></div>{% else %}<p class="publisher-files-note muted small">Publisher structural files are not linked in the local archive for this paper. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Open the publisher article ↗</a></p>{% endif %}
+     data-ref="{{ e.id }}"></div>{% else %}<p class="publisher-files-note muted small">The archive holds no publisher structure files for this paper. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Open the publisher article ↗</a></p>{% endif %}
   </section>
   <section class="record-section main-reading">
     <div class="record">
       <h2>What the paper says about this crystal</h2>
-      {% if x.status=="pending" %}<p class="muted record-lead">This entry is imported. Its extraction was still running when this snapshot was built.</p>{% else %}
+      {% if x.status=="pending" %}<p class="muted record-lead">The extraction for this entry had not finished when this snapshot was built.</p>{% else %}
         {% if x.summary %}<p class="record-lead">{{ x.summary }}</p>{% endif %}
         {% if x.compound_label %}<p class="muted {% if x.summary %}record-match{% else %}record-lead{% endif %}">The paper calls this {{ x.compound_label }}.</p>{% endif %}
-        {% if not x.fields and not x.summary %}<p class="muted record-lead">No publisher-supported extraction is available for this record. Status: {{ x.status|replace('_', ' ') }}.</p>{% endif %}
+        {% if not x.fields and not x.summary %}<p class="muted record-lead">The extraction produced no record for this entry (status: {{ x.status|replace('_', ' ') }}).</p>{% endif %}
         <dl class="record-fields">
           {% for field in fields if x.fields.get(field) %}
             {% set quotes = x.evidence|selectattr('field','equalto',field)|list %}
@@ -37,14 +37,14 @@
               <dt>{{ field|replace('_', ' ')|capitalize }}</dt>
               <dd>
                 <p>{{ x.fields[field] }}</p>
-                {% if quotes %}<details><summary>{{ quotes|length }} quote{% if quotes|length>1 %}s{% endif %} from the paper</summary>{% for ev in quotes %}<blockquote tabindex="0" data-source="{{ ev.get('source_file', '') }}">{{ ev.quote }}</blockquote>{% if not ev.get("verified", True) %}<span class="quote-status">Recorded in extraction; not independently matched to stored text.</span>{% endif %}{% endfor %}</details>{% endif %}
+                {% if quotes %}<details><summary>{{ quotes|length }} quote{% if quotes|length>1 %}s{% endif %} from the paper</summary>{% for ev in quotes %}<blockquote tabindex="0" data-source="{{ ev.get('source_file', '') }}">{{ ev.quote }}</blockquote>{% if not ev.get("verified", True) %}<span class="quote-status">Quoted by the extraction model but not found in the stored article text.</span>{% endif %}{% endfor %}</details>{% endif %}
               </dd>
             </div>
           {% endfor %}
         </dl>
       {% endif %}
       {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} on {{ x.extracted_at|extraction_date }}.</p>{% endif %}
-      {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Full Acta E synthesis / experimental snippets</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
+      {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Experimental section of the Acta E article</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
     </div>
     <div class="paper" data-doi="{{ e.doi }}">
       <h2>The paper</h2>
@@ -57,10 +57,10 @@
         <select id="paper-document" aria-label="Paper document"></select>
       </label>
       <p class="muted small paper-status" id="paper-status" role="status">Loading publisher text…</p>
-      <div class="paper-text" id="paper-text"><h3>Publisher excerpts</h3>{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No local source text is available. Follow the DOI above to read the article.</p>{% endfor %}</div>
+      <div class="paper-text" id="paper-text"><h3>Publisher excerpts</h3>{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">The article text is not stored here. Follow the DOI above to read it.</p>{% endfor %}</div>
       <details class="license-note"><summary>Publisher licence & bibliography sources</summary><p>{{ paper.provenance.bibliography_source }}{% if paper.provenance.get("bibliography_url") %} · <a href="{{ paper.provenance.bibliography_url }}"
     target="_blank"
-    rel="noopener">Source ↗</a>{% endif %}</p>{% for lic in paper.licenses %}<p>{{ lic.text }}{% if lic.url %} <a href="{{ lic.url }}" target="_blank" rel="noopener">Publisher terms ↗</a>{% endif %}</p>{% else %}<p>Licence terms were not indexed for this paper. Consult the publisher article.</p>{% endfor %}</details>
+    rel="noopener">Source ↗</a>{% endif %}</p>{% for lic in paper.licenses %}<p>{{ lic.text }}{% if lic.url %} <a href="{{ lic.url }}" target="_blank" rel="noopener">Publisher terms ↗</a>{% endif %}</p>{% else %}<p>No licence terms were recorded for this paper. See the publisher's article.</p>{% endfor %}</details>
     </div>
   </section>
   <script type="application/json" id="evidence">{{ x.evidence|tojson }}</script>

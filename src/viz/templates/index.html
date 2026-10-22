@@ -12,7 +12,7 @@
   </section>
   <aside class="data-disclaimer">
     <strong>Data disclosure</strong>
-    <p>We do not disclose CCDC-sourced data other than refcodes. Crystal files, chemical schemes and article content shown here are publisher-provided. Publisher refcodes are shown where available.</p>
+    <p>Apart from refcodes, this site shows no data from the Cambridge Crystallographic Data Centre (CCDC). The crystal structure files (CIFs), chemical schemes and article text all come from the publishers. Publisher refcodes are shown where available.</p>
   </aside>
   <section class="strip">
     {% for e in hero %}
@@ -27,34 +27,34 @@
     {% endfor %}
   </section>
   <section class="numbers">
-    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes across journals, linked to {{ "{:,}".format(snapshot.papers) }} publisher papers</span></div>
-    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with publisher procedure snippets or recorded source excerpts</span></div>
-    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>processed refcodes in this extraction snapshot; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} pending</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes, linked to {{ "{:,}".format(snapshot.papers) }} papers</span></div>
+    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with stored excerpts of their text</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>refcodes whose extraction has run; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} still pending</span></div>
   </section>
   <section class="block collection-note">
     <h2>Publisher sources, across journals</h2>
-    <p class="muted">Browse Acta E and the additional journals in the combined extraction set. Each record pairs the extracted procedure with the paper, publisher source excerpts and any locally available publisher CIF or chemical scheme. CIFs are paper-level files; structure blocks are not automatically matched to individual refcodes.</p>
+    <p class="muted">The entries come from Acta Crystallographica Section E (Acta E) and from the other journals in the extraction. Each entry pairs the extracted procedure with its paper, excerpts of the paper's text, and the publisher's CIF and chemical scheme where the archive holds them. A CIF belongs to the whole paper, so its structure blocks are not matched to individual refcodes automatically.</p>
     <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Filter by journal in the Explorer.</p>
   </section>
   <section class="block">
     <h2>The corpus</h2>
-    <p class="muted">Article identities and publication years come from publisher records and Europe PMC. The charts describe the papers and refcode links currently imported into this browser.</p>
-    <p class="small muted">Licence labels reflect indexed publisher evidence; papers with no indexed terms are counted under Other.</p>
+    <p class="muted">Paper identities and publication years come from publisher records and Europe PMC. The charts describe the papers and refcodes in this snapshot.</p>
+    <p class="small muted">Licence labels come from the publisher records. A paper whose record names no licence is labelled Not indexed, and the less common labels are grouped under Other.</p>
     <div class="charts">
       <figure>
-        <figcaption>Refcode links by the paper’s publication year</figcaption>
+        <figcaption>Refcodes by publication year of their paper</figcaption>
         <div class="plot" id="coverage"></div>
       </figure>
       <figure>
-        <figcaption>Imported papers by publication year</figcaption>
+        <figcaption>Papers by publication year</figcaption>
         <div class="plot" id="pmc_years"></div>
       </figure>
       <figure>
-        <figcaption>Journals represented in the imported papers</figcaption>
+        <figcaption>Journals of the papers</figcaption>
         <div class="plot" id="journals"></div>
       </figure>
       <figure>
-        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} imported papers</figcaption>
+        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} papers</figcaption>
         <div class="plot" id="licenses"></div>
       </figure>
     </div>
