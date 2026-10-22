@@ -158,14 +158,14 @@ procedures to CSD entries.
    fields can be derived from the paragraphs later.
 5. **Show.** We built a website to browse the corpus and the records of the CSD Drug Subset.
 
-<figure>
+<div align="center"><figure>
 <img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
 <figcaption>
 <strong>Figure 1.</strong> Downloaded papers by publication year, with colors indicating
 journals. Acta Crystallographica Section E, a journal that publishes one structure per paper,
 supplies 41% of the corpus; since 2015, most papers come from general chemistry journals.
 </figcaption>
-</figure>
+</figure></div>
 
 ### Results
 
@@ -187,14 +187,14 @@ supplies 41% of the corpus; since 2015, most papers come from general chemistry 
   before answering), the model gave the same matches and core paragraphs as at `max` and ran
   about 10 times faster, so we use `high`.
 
-<figure>
+<div align="center"><figure>
 <img src="docs/assets/downloads.png" width="700" alt="Paper licences and file availability">
 <figcaption>
 <strong>Figure 2.</strong> Downloaded papers by licence in the PMC record (left, counts) and file
 availability (right, percentages). Most papers are under CC BY. "TDM" (text and data mining)
 marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
 </figcaption>
-</figure>
+</figure></div>
 
 ### Next steps
 

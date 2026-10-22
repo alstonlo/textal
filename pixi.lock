@@ -2202,7 +2202,7 @@ packages:
 - pypi: ./
   name: csd-textal
   version: 0.1.0
-  sha256: aa39d69ebd6bc158bdd26ccad2ab4d83c6e82fb20f5467f70d7ef87578734ed2
+  sha256: c0176a238d56cc9ec79082fb1f129311f0db8e2f51c4bd9fb6f2abc7a065079b
   requires_dist:
   - jupyter>=1.1.1
   - openai>=2
