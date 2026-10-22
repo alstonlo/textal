@@ -1,6 +1,6 @@
 # Publisher-only TEXtal website
 
-This branch starts from `main` at `97595a9`. It preserves the main website's
+This branch starts from `main` at `6e681d5`. It preserves the main website's
 FastAPI/Jinja layout, crystal thumbnails, element palette, unit-cell drawing,
 whole-molecule packing and optional faint surrounding molecules. Geometry is
 parsed with Gemmi from the publisher's original CIF, never from a CSD CIF.
