@@ -32,6 +32,7 @@ def apply() -> None:
             "axes.labelsize": 8,
             "axes.titlesize": 8,
             "legend.fontsize": 7,
+            "legend.frameon": False,
             "figure.titlesize": 9,
             "axes.edgecolor": "black",
             "axes.linewidth": 0.8,
