@@ -42,8 +42,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
     `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
     finished, so a stopped run can resume.
-- `results/` (untracked): the plots, one folder per data folder they describe, e.g.
-  `papers/plots/` for `data/papers/`.
+- `results/`: the plots, one folder per data folder they describe, e.g. `papers/plots/` for
+  `data/papers/`. The PNGs are tracked, the PDFs are not.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 
