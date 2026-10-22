@@ -37,7 +37,7 @@ Generated from `src/dataset/extraction_schema.py`; edit that file, not this one.
 | Column | Type | Description |
 |---|---|---|
 | `evidence` | list of records | Supporting quotes, at least one per filled column: `field` (the column supported), `source_file` (a name from `source_files`), `page` (1-based page of that file, empty if unknown) and `quote` (verbatim). |
-| `source_files` | list of records | Files the model saw for this row: `name` (file name as downloaded), `kind` (`main` or `supplementary`) and `input` (sent as extracted `text` or as the `pdf`). |
+| `source_files` | list of records | Files the model saw for this row: `name` (file name as downloaded), `kind` (`main` or `supplementary`) and `input` (sent as `text` extracted with PyMuPDF, as `mineru` text, as the `pdf`, or as `md` from the PMC corpus). |
 | `model` | text | Model ID used for extraction. |
 | `prompt_version` | text | Version of the extraction prompt; part of the key. |
 | `extracted_at` | timestamp | When the extraction ran. |

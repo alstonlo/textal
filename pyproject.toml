@@ -6,6 +6,7 @@ dependencies = [
     "jupyter>=1.1.1",
     "openai>=2",
     "polars>=2.0.0",
+    "pymupdf>=1.26,<2",
     "tqdm>=4.70.1,<5",
 ]
 
