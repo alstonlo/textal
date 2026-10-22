@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}csd-textal{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/style.css">
+{% block head %}{% endblock %}
+</head>
+<body>
+<header class="bar">
+  <a class="wordmark" href="/">csd-textal</a>
+  <nav>
+    <a href="/" {% if active == "home" %}aria-current="page"{% endif %}>Homepage</a>
+    <a href="/explore" {% if active == "explore" %}aria-current="page"{% endif %}>Explorer</a>
+  </nav>
+</header>
+<main>{% block body %}{% endblock %}</main>
+<footer>A demo. Crystal data from the Cambridge Structural Database; papers from PubMed Central under their own licences.</footer>
+{% block scripts %}{% endblock %}
+</body>
+</html>

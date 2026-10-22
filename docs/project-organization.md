@@ -8,6 +8,18 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the
   report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes a
   figure as PNG).
+  - `app.py`: the website, a FastAPI app; run it with `pixi run web` and open
+    http://localhost:8000. The landing page shows the statistics of the corpus (from
+    `data/raw/csd_metadata.full.parquet` and `data/papers/*.parquet`) and the extraction schema;
+    `/explore` lists the CSD drug subset (`data/viz/csd_drugs_with_paper.parquet`), each entry as
+    its filled unit cell drawn flat by `crystal.py` (a small CIF parser that applies the symmetry
+    operators), and
+    `/entry/<refcode>` shows one entry: its crystal structure (the CIF, drawn by py3Dmol in
+    `crystal.py`), its molecule (drawn by RDKit), its
+    CSD metadata, its paper (`data/papers/parsed/`) and its extracted record, read from
+    `data/viz/extractions.parquet` (in the schema of `dataset.extraction_schema`) when that file
+    exists, shown as placeholders until then.
+  - `templates/` (Jinja) and `static/` (CSS and the page scripts): the pages of the website.
 - `scripts/`: the scripts, run from the repository root. [`Snakefile`](../scripts/Snakefile)
   names which script produces which file from which input, and runs them in order; see
   [`scripts/README.md`](../scripts/README.md).

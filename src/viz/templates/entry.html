@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% set active = "explore" %}
+{% set x = e.extraction %}
+{% block title %}{{ e.name }} ({{ e.id }}), csd-textal{% endblock %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>{% endblock %}
+{% block body %}
+<section class="page-head">
+  <a class="back muted" href="/explore">&larr; All {{ counts.drug_entries }} entries</a>
+  <h1>{{ e.name }}</h1>
+  <p class="muted">{{ e.chemical_name }}</p>
+  <p class="facts">
+    {{ e.id }}, CCDC {{ e.ccdc_number }}{% for d in e.drugbank_ids %}, <a href="https://go.drugbank.com/drugs/{{ d }}">DrugBank {{ d }}</a>{% endfor %}.
+    {% if e.forms %}{{ e.forms|join(" ")|capitalize }}.{% else %}Neat compound.{% endif %}
+    {{ "Organic" if e.is_organic else "Organometallic" }}{% if e.polymorph %}, {{ e.polymorph }}{% endif %}.
+  </p>
+</section>
+
+<section class="viewer">
+  {{ viewer|safe }}
+  <p class="muted small">Drag to rotate, scroll to zoom. The cell is drawn with its a, b and c axes in red, green and blue.</p>
+</section>
+
+<section class="entry-data">
+  <dl class="data">
+    <div><dt>Space group</dt><dd>{{ e.space_group or "unknown" }}{% if e.crystal_system %}, {{ e.crystal_system }}{% endif %}, Z = {{ e.z }}</dd></div>
+    <div><dt>Cell</dt><dd class="num">a {{ e.a }}, b {{ e.b }}, c {{ e.c }} &Aring;; &alpha; {{ e.alpha }}, &beta; {{ e.beta }}, &gamma; {{ e.gamma }}&deg;; V {{ e.cell_volume }} &Aring;&sup3;</dd></div>
+    <div><dt>Density</dt><dd class="num">{{ e.density }} g cm&#8315;&sup3;</dd></div>
+    <div><dt>Measured</dt><dd>{{ e.temperature or "temperature not given" }}{% if e.r_factor is not none %}, R factor {{ e.r_factor }}%{% endif %}</dd></div>
+    <div><dt>Crystals</dt><dd>{{ e.color or "" }} {{ e.habit or "" }}{% if not (e.color or e.habit) %}not described{% endif %}{% if e.solvent %}, grown from {{ e.solvent }}{% endif %}</dd></div>
+    {% if e.melting_point %}<div><dt>Melting point</dt><dd class="num">{{ e.melting_point }}</dd></div>{% endif %}
+    <div><dt>Formula</dt><dd class="num">{{ e.formula }}</dd></div>
+    <div><dt>SMILES</dt><dd class="num smiles">{{ e.smiles }}</dd></div>
+    {% if e.disorder %}<div><dt>Disorder</dt><dd>{{ e.disorder }}</dd></div>{% endif %}
+    {% if e.remarks %}<div><dt>Remarks</dt><dd>{{ e.remarks }}</dd></div>{% endif %}
+    {% if e.bioactivity %}<div><dt>Bioactivity</dt><dd>{{ e.bioactivity }}</dd></div>{% endif %}
+  </dl>
+  <div class="molecule">{{ e.svg|safe }}</div>
+</section>
+
+<section class="record-section">
+  <div class="record">
+    <h2>What the paper says about this crystal</h2>
+    <p class="muted">{% if x %}Extraction status: {{ x.extraction_status }}{% if x.model %}, by {{ x.model }}, prompt {{ x.prompt_version }}, on {{ x.extracted_at }}{% endif %}.{% else %}Not extracted yet. These are the fields the record will hold, one paragraph each with its supporting quotes.{% endif %}</p>
+    {% for col in schema if col.group in ("Linking", "Paper content") %}
+    {% set v = x[col.name] if x else none %}
+    <div class="field">
+      <h3>{{ col.name|replace("_", " ")|capitalize }}</h3>
+      {% if v is none or v == "" or v == [] %}
+      <p class="muted small">{{ col.description|replace("`", "") }}</p>
+      {% elif v is string %}<p>{{ v }}</p>
+      {% else %}<p>{{ v|join(", ") }}</p>{% endif %}
+    </div>
+    {% endfor %}
+    {% if x and x.error %}<p class="muted">Error: {{ x.error }}</p>{% endif %}
+  </div>
+
+  <div class="paper">
+    <h2>The paper</h2>
+    <p class="paper-title">{{ e.title or e.chemical_name }}</p>
+    <p class="small">{{ e.authors }}</p>
+    <p class="muted small">{{ e.journal }}{% if e.volume %}, {{ e.volume }}{% endif %}{% if e.first_page %}, {{ e.first_page }}{% endif %} ({{ e.year }}){% if e.license %}, {{ e.license }}{% endif %}.
+      <a href="https://doi.org/{{ e.doi }}">doi.org/{{ e.doi }}</a>{% if e.pmcid %}, <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ e.pmcid }}/">{{ e.pmcid }}</a>{% endif %}.
+      {% if supplementary %}Supplementary files: {{ supplementary|join(", ") }}.{% endif %}</p>
+    <div class="paper-text" id="paper-text">{% if not paper %}<p class="muted">The parsed paper is not available.</p>{% endif %}</div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script id="paper-md" type="text/plain">{{ paper }}</script>
+<script id="evidence" type="application/json">{{ (x.evidence if x else [])|tojson }}</script>
+<script src="/static/entry.js"></script>
+{% endblock %}
