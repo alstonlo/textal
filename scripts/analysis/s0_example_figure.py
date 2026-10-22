@@ -50,7 +50,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 def main(
     refcode: str = "AYUBEC",
     extractions: str = str(DATA_DIR / "extractions.parquet"),
-    out: str = str(REPO_ROOT / "docs" / "assets" / "example.png"),
+    out: str = str(REPO_ROOT / "assets" / "example.png"),
     chrome: str = "google-chrome",
 ):
     """Renders the README's example record: the unit cell of one CSD entry beside its record.

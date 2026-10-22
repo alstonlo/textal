@@ -27,7 +27,7 @@ EXTRACTION_PLOTS = ["extraction", "records"]
 rule all:
     default_target: True
     input:
-        expand("docs/assets/{plot}.png", plot=PLOTS),
+        expand("assets/{plot}.png", plot=PLOTS),
 
 
 # The CSD Python API lives in its own pixi environment, `csd`.
@@ -62,7 +62,7 @@ rule plot_papers:
         f"{PAPERS}/parsed.parquet",
         f"{ASSETS}/publisher_papers.parquet",
     output:
-        expand("docs/assets/{plot}.png", plot=PLOTS),
+        expand("assets/{plot}.png", plot=PLOTS),
     shell:
         "python scripts/analysis/s0_paper_plots.py"
 
@@ -73,7 +73,7 @@ rule plot_extraction:
         f"{PAPERS}/metadata.parquet",
         "data/raw/csd_metadata.full.parquet",
     output:
-        expand("docs/assets/{plot}.png", plot=EXTRACTION_PLOTS),
+        expand("assets/{plot}.png", plot=EXTRACTION_PLOTS),
     shell:
         "python scripts/analysis/s0_extraction_plots.py"
 
@@ -86,7 +86,7 @@ rule example:
         "data/raw/csd_metadata.full.parquet",
         f"{PAPERS}/metadata.parquet",
     output:
-        "docs/assets/example.png",
+        "assets/example.png",
     shell:
         "python scripts/analysis/s0_example_figure.py"
 

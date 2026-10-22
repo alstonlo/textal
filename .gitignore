@@ -239,6 +239,5 @@ CLAUDE.md
 /*.ipynb
 /uv.lock
 
-# Notes for agents and generated schema files; only docs/assets/ is tracked
-/docs/*
-!/docs/assets/
+# Notes for agents and generated schema files
+/docs/

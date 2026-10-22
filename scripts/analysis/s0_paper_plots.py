@@ -15,7 +15,7 @@ PLOTS = ["years", "downloads"]
 def main(
     papers: str = str(DATA_DIR / "papers"),
     acta_e: str = str(REPO_ROOT / "src" / "viz" / "assets" / "publisher_papers.parquet"),
-    out: str = str(REPO_ROOT / "docs" / "assets"),
+    out: str = str(REPO_ROOT / "assets"),
     first_year: int = 2000,
 ):
     """Plots the figures of the README, from `<papers>/metadata.parquet` and `parsed.parquet`.

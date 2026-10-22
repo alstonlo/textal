@@ -4,7 +4,7 @@
 
 **A dataset of crystal structures paired with text-mined crystallization procedures and outcomes.**
 
-<img src="docs/assets/example.png" width="800" alt="The unit cell of caffeinium bisulfate monohydrate beside its extracted record: the compound matched in the paper, its synthesis, its crystallization and its solid form">
+<img src="assets/example.png" width="800" alt="The unit cell of caffeinium bisulfate monohydrate beside its extracted record: the compound matched in the paper, its synthesis, its crystallization and its solid form">
 
 </div>
 
@@ -207,7 +207,7 @@ crystallization procedures to CSD entries.
    scheme of its paper, the paper's text and the extracted record with its quotes.
 
 <div align="center"><figure>
-<img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
+<img src="assets/years.png" width="700" alt="Papers by year and journal">
 <figcaption>
 <strong>Figure 1.</strong> The 55,001 papers of the corpus by publication year, with colors
 indicating journals. Acta E, a journal that publishes one structure per paper, supplies half of
@@ -247,7 +247,7 @@ journals.
   about 10 times faster, so we use `high`.
 
 <div align="center"><figure>
-<img src="docs/assets/extraction.png" width="700" alt="Extracted and not yet extracted papers of the ten largest journals">
+<img src="assets/extraction.png" width="700" alt="Extracted and not yet extracted papers of the ten largest journals">
 <figcaption>
 <strong>Figure 2.</strong> The papers of the ten largest journals, split into those the model has
 read (blue) and those still waiting (grey), with the share read. The extraction ran journal by
@@ -256,7 +256,7 @@ journal and stopped at the end of the hackathon, in the middle of Inorganic Chem
 </figure></div>
 
 <div align="center"><figure>
-<img src="docs/assets/records.png" width="700" alt="Filled paragraphs and match confidence of the two runs">
+<img src="assets/records.png" width="700" alt="Filled paragraphs and match confidence of the two runs">
 <figcaption>
 <strong>Figure 3.</strong> The records of the two runs. Left, the share of records with each
 paragraph filled; right, the confidence of the match between the CSD entry and the compound in
@@ -266,7 +266,7 @@ characterization, purpose or the solid form.
 </figure></div>
 
 <div align="center"><figure>
-<img src="docs/assets/downloads.png" width="700" alt="Paper licences and file availability">
+<img src="assets/downloads.png" width="700" alt="Paper licences and file availability">
 <figcaption>
 <strong>Figure 4.</strong> Downloaded papers by licence in the PMC record (left, counts) and file
 availability (right, percentages). Most papers are under CC BY. "TDM" (text and data mining)

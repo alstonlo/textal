@@ -29,7 +29,7 @@ def main(
     extractions: str = str(DATA_DIR / "extractions.parquet"),
     papers: str = str(DATA_DIR / "papers"),
     csd: str = str(DATA_DIR / "raw" / "csd_metadata.full.parquet"),
-    out: str = str(REPO_ROOT / "docs" / "assets"),
+    out: str = str(REPO_ROOT / "assets"),
     top: int = 10,
 ):
     """Plots the figures of the README on the extraction, and prints its statistics.
