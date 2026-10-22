@@ -5,6 +5,7 @@ import numpy as np
 import polars as pl
 from jsonargparse import auto_cli
 
+from dataset.csd import nlm_abbrevs
 from dataset.paths import DATA_DIR, REPO_ROOT
 from viz import theme
 
@@ -33,7 +34,8 @@ def main(
 
     journals = meta.group_by("journal").len("papers").sort("papers", "journal", descending=True)
     head, tail = journals.head(top), journals.slice(top)
-    names = head["journal"].to_list() + [f"{len(tail):,} other journals"]
+    abbrevs = nlm_abbrevs(meta, head["journal"], papers / "raw")
+    names = [abbrevs[j] for j in head["journal"]] + [f"{len(tail):,} other journals"]
     counts = head["papers"].to_list() + [tail["papers"].sum()]
     fig, ax = plt.subplots(figsize=(theme.WIDTH, 0.18 * len(names) + 0.7), layout="constrained")
     y = np.arange(len(names))
@@ -75,7 +77,8 @@ def main(
     fig, ax = plt.subplots(figsize=(theme.WIDTH, 2.4), layout="constrained")
     bottom = np.zeros(len(years))
     for name, color in zip(top5 + ["Other"], theme.PALETTE[:5] + ["0.7"]):
-        ax.bar(years, by_year[name].to_numpy(), bottom=bottom, color=color, width=0.8, label=name)
+        label = abbrevs.get(name, name)
+        ax.bar(years, by_year[name].to_numpy(), bottom=bottom, color=color, width=0.8, label=label)
         bottom += by_year[name].to_numpy()
     ax.set_xlabel("Year")
     ax.set_ylabel("Papers")

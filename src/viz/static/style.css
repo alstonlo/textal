@@ -78,14 +78,10 @@ footer { padding-top: 32px; padding-bottom: 48px; margin-top: 120px; border-top:
 .charts figure { margin: 0; min-width: 0; }
 .charts figcaption { font-size: 14px; margin-bottom: 12px; }
 .plot { width: 100%; height: 300px; }
-.schema { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin: 48px 0; }
-.schema dl { margin: 16px 0 0; }
-.schema dt { font-weight: 500; margin-top: 14px; }
-.schema dd { margin: 2px 0 0; font-size: 14px; color: var(--muted); }
 @media (max-width: 900px) {
   .hero { padding-top: 64px; }
   .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .numbers, .schema, .charts { grid-template-columns: minmax(0, 1fr); }
+  .numbers, .charts { grid-template-columns: minmax(0, 1fr); }
   .numbers, .block { margin-top: 72px; }
 }
 

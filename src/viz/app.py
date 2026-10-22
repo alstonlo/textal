@@ -1,5 +1,6 @@
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 import plotly.graph_objects as go
@@ -22,6 +23,9 @@ HERE = Path(__file__).parent
 CSD = DATA_DIR / "raw" / "csd_metadata.full.parquet"
 PAPERS = DATA_DIR / "papers"
 DRUGS = DATA_DIR / "viz" / "csd_drugs_with_paper.parquet"
+
+# The NLM title abbreviation of a paper's journal, as in https://www.ncbi.nlm.nih.gov/nlmcatalog/.
+NLM_TA = re.compile(r'<journal-id journal-id-type="nlm-ta">([^<]+)<')
 
 # Written by the extraction run, in the schema of `dataset.extraction_schema`. Optional: until it
 # exists, the entry pages show the schema as placeholders.
@@ -62,7 +66,6 @@ ATOM_COLOURS |= {
 
 INK = "#111111"
 MUTED = "#6B6B68"
-GRID = "#E5E5E3"
 
 
 def parse_cif(cif: str) -> dict:
@@ -161,14 +164,31 @@ def figure(traces: list, **layout) -> dict:
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={"family": "Inter, system-ui, sans-serif", "color": MUTED, "size": 12},
-        margin={"l": 8, "r": 8, "t": 8, "b": 8},
+        margin={"l": 8, "r": 16, "t": 8, "b": 8},
         hoverlabel={"bgcolor": INK, "bordercolor": INK, "font": {"color": "#FFFFFF"}},
-        legend={"orientation": "h", "x": 0, "y": 1.12, "bgcolor": "rgba(0,0,0,0)"},
-        bargap=0.35,
+        legend={"orientation": "h", "x": 0, "y": 1.14, "bgcolor": "rgba(0,0,0,0)"},
+        bargap=0.3,
         **layout,
     )
-    fig.update_xaxes(gridcolor=GRID, zeroline=False, showline=False, fixedrange=True)
-    fig.update_yaxes(gridcolor=GRID, zeroline=False, showline=False, fixedrange=True)
+
+    # The axes of `theme.apply()`: a black frame and outward ticks, no grid.
+    axis = {
+        "showgrid": False,
+        "zeroline": False,
+        "showline": True,
+        "linecolor": INK,
+        "linewidth": 2,
+        "mirror": True,
+        "ticks": "outside",
+        "ticklen": 5,
+        "tickwidth": 1.5,
+        "tickcolor": INK,
+        "ticklabelstandoff": 6,
+        "tickfont": {"color": INK, "size": 11},
+        "fixedrange": True,
+    }
+    fig.update_xaxes(**axis)
+    fig.update_yaxes(**axis)
     return json.loads(fig.to_json())
 
 
@@ -195,6 +215,18 @@ def load_stats(entries: list[dict]) -> dict:
     )
     pmc_years = papers.filter(pl.col("year") >= 2005).group_by("year").len().sort("year")
     journals = papers.group_by("journal").len().sort("len", descending=True).head(12)
+
+    # CSD journal names are terse (e.g. `J.Am.Chem.Soc.`), so the chart uses the NLM abbreviation
+    # from the papers' PMC XML instead. A few papers carry another journal's tag, hence the vote.
+    abbrevs = []
+    for name in journals["journal"]:
+        dirs = papers.filter(
+            (pl.col("journal") == name) & pl.col("files").list.contains("paper.xml")
+        )["dir"]
+        tags = [NLM_TA.search((PAPERS / "raw" / d / "paper.xml").read_text()) for d in dirs[:25]]
+        tags = [m.group(1) for m in tags if m]
+        abbrevs.append(Counter(tags).most_common(1)[0][0] if tags else name)
+    assert len(set(abbrevs)) == len(abbrevs), abbrevs
     licenses = (
         papers.with_columns(pl.col("license").fill_null("Not stated"))
         .group_by("license")
@@ -247,13 +279,14 @@ def load_stats(entries: list[dict]) -> dict:
                     meta="bar",
                     hovertemplate=hover,
                 )
-            ]
+            ],
+            yaxis={"tickformat": "~s"},
         ),
         "journals": figure(
             [
                 go.Bar(
                     x=journals["len"],
-                    y=journals["journal"],
+                    y=abbrevs,
                     orientation="h",
                     meta="bar-warm",
                     hovertemplate="%{y}: %{x:,}<extra></extra>",
@@ -305,11 +338,7 @@ HERO = featured(ENTRIES, 6)
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):
-    ctx = {
-        "stats": STATS,
-        "schema": SCHEMA,
-        "hero": HERO,
-    }
+    ctx = {"stats": STATS, "hero": HERO}
     return templates.TemplateResponse(request, "index.html", ctx)
 
 
