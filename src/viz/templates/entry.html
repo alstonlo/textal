@@ -5,7 +5,7 @@
 {% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/markdown-it/13.0.2/markdown-it.min.js"></script>{% endblock %}
 {% block body %}
 <section class="page-head">
-  <a class="back muted" href="/explore">&larr; All {{ counts.drug_entries }} entries</a>
+  <a class="back muted" href="{{ root }}/explore">&larr; All {{ counts.drug_entries }} entries</a>
   <h1>{{ e.name }}</h1>
   <p class="muted">{{ e.chemical_name }}</p>
   <p class="facts">
@@ -82,5 +82,5 @@
 {% block scripts %}
 <script id="paper-md" type="text/plain">{{ paper }}</script>
 <script id="evidence" type="application/json">{{ (x.evidence if x else [])|tojson }}</script>
-<script src="/static/entry.js"></script>
+<script src="{{ root }}/static/entry.js"></script>
 {% endblock %}

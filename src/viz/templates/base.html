@@ -8,15 +8,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>❄️</text></svg>">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{ root }}/static/style.css">
 {% block head %}{% endblock %}
 </head>
 <body>
 <header class="bar">
-  <a class="wordmark" href="/">TEXtal</a>
+  <a class="wordmark" href="{{ root }}/">TEXtal</a>
   <nav>
-    <a href="/" {% if active == "home" %}aria-current="page"{% endif %}>Homepage</a>
-    <a href="/explore" {% if active == "explore" %}aria-current="page"{% endif %}>Explorer</a>
+    <a href="{{ root }}/" {% if active == "home" %}aria-current="page"{% endif %}>Homepage</a>
+    <a href="{{ root }}/explore" {% if active == "explore" %}aria-current="page"{% endif %}>Explorer</a>
   </nav>
 </header>
 <main>{% block body %}{% endblock %}</main>

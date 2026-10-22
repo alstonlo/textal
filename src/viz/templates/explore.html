@@ -19,7 +19,7 @@
 </section>
 <section class="tiles" id="cards">
   {% for e in entries %}
-  <a class="tile" href="/entry/{{ e.id }}"
+  <a class="tile" href="{{ root }}/entry/{{ e.id }}"
      data-name="{{ e.name|lower }}" data-id="{{ e.id }}" data-year="{{ e.year or 0 }}"
      data-forms="{{ e.forms|join(' ') or 'neat' }}"
      data-search="{{ (e.name ~ ' ' ~ e.id ~ ' ' ~ (e.formula or '') ~ ' ' ~ (e.chemical_name or '') ~ ' ' ~ (e.journal or '') ~ ' ' ~ (e.drugbank_ids|join(' ')))|lower }}">
@@ -31,5 +31,5 @@
 </section>
 {% endblock %}
 {% block scripts %}
-<script src="/static/explore.js"></script>
+<script src="{{ root }}/static/explore.js"></script>
 {% endblock %}

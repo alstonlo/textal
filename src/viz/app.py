@@ -247,6 +247,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=HERE / "templates")
 
+# The path the site is served under; a static export for alstonlo.github.io/textal sets "/textal".
+templates.env.globals["root"] = ""
+
 
 def featured(entries: list[dict], n: int) -> list[dict]:
     """Entries whose cell drawing reads well at a small size: mid-sized, one drug each."""

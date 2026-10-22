@@ -8,12 +8,12 @@
 <section class="hero">
   <h1>Crystals, and how they were grown</h1>
   <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
-  <a class="button" href="/explore">Browse the {{ c.drug_entries }} demo crystals</a>
+  <a class="button" href="{{ root }}/explore">Browse the {{ c.drug_entries }} demo crystals</a>
 </section>
 
 <section class="strip">
   {% for e in hero %}
-  <a class="strip-item" href="/entry/{{ e.id }}">{{ e.cell|safe }}<span>{{ e.name }}</span></a>
+  <a class="strip-item" href="{{ root }}/entry/{{ e.id }}">{{ e.cell|safe }}<span>{{ e.name }}</span></a>
   {% endfor %}
 </section>
 
