@@ -19,8 +19,8 @@ crystal that a molecule forms under a written procedure, and condition generatio
 predicts a procedure that yields a given crystal.
 
 **The extraction is not finished.** The hackathon ended before the model had read every paper:
-the records cover 28,960 of the 55,001 papers (53%), including 85% of the Acta E papers and
-four other journals in full. The rest of the corpus is downloaded and converted, and the
+the records cover 28,960 of the 55,001 papers (53%): 85% of the Acta E collection, three other
+journals in full and a fourth half-way. The rest of the corpus is downloaded and converted, and the
 extraction resumes where it stopped. Every statistic below says which part of the corpus it
 describes.
 
@@ -99,10 +99,10 @@ the CCDC numbers printed in it. This collection was made on a cluster with the s
 [`acta-e-extraction-and-viewer`](https://github.com/alstonlo/clari-data-osi-hack/tree/acta-e-extraction-and-viewer)
 branch (`scripts/iucr_archive/`), which are tied to that machine's paths and are not part of
 this branch. Its result is one table, `data/viz/acta-e-papers.jsonl.gz`, with one line per paper
-(its identifiers, licence, the paragraphs of its experimental sections and its CSD refcodes);
-[`docs/project-organization.md`](docs/project-organization.md) describes it. Of its 27,266
-papers, 27,226 are also in the PMC download; the other 40 cite a DOI that the CSD does not
-record.
+(its identifiers, licence, the paragraphs of its experimental sections and its CSD refcodes).
+Of its 27,266 papers, 27,226 are also in the PMC download; the other 40 cite a DOI that the CSD
+does not record. The corpus is the union of the two sources: the 54,961 papers from PMC plus
+those 40, for 55,001 papers. Every count below is over this union.
 
 ### Extract the procedures
 
@@ -119,9 +119,10 @@ pixi run python -m dataset.extraction_stream --run data/runs/corpus             
 This runner reads the full Markdown of a paper. The Acta E papers were extracted by a second
 runner (`acta_e_stream.py`, on the same branch as the collection) that reads only the paper's
 experimental sections and makes the model pick its quotes from numbered passages, so that the
-quotes are verbatim by construction. [`docs/EXTRACTION_RUNS.md`](docs/EXTRACTION_RUNS.md) lists
-the runs. The records of all runs are gathered in `data/extractions.parquet`, which the figures
-and the website are built from:
+quotes are verbatim by construction. Two runs were made: `corpus`, which read the other journals
+with `gpt-6-luna`, and `acta_e`, which read the Acta E collection with `gpt-5.6-luna`. The records
+of both are gathered in `data/extractions.parquet`, which the figures and the website are built
+from; its `prompt_version` column tells the two runs apart:
 
 ```bash
 pixi run snakemake -s scripts/Snakefile -j1 plot_extraction   # Figures 2 and 3
@@ -142,7 +143,8 @@ pixi run web --port 8000
 The website reads only the tables in `src/viz/assets/`, which hold nothing from the CSD but the
 refcodes and their DOIs. Building them needs the Acta E collection, the extracted records, the
 bibliography of the other journals' papers (fetched from Europe PMC and Crossref) and their
-texts; [`docs/website.md`](docs/website.md) explains the inputs and what the website may show.
+texts. The website shows the text of the CC BY papers only, and of each record only the
+paragraphs whose quote is found in the paper's text.
 
 ```bash
 pixi run snakemake -s scripts/Snakefile -j1 assets

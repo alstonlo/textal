@@ -17,5 +17,7 @@ pixi run snakemake -s scripts/Snakefile -j1 assets           # the tables of the
 `runs/` holds the scripts that make the data, `analysis/` those that only read it. The analysis
 scripts that print statistics instead of writing files (`s0_csd_journal_stats.py`,
 `s0_clari_stats.py`) are not Snakemake rules; run them directly. The scripts of `runs/viz/`
-written by the website's author take `argparse` flags instead of keyword arguments. See
-[`docs/project-organization.md`](../docs/project-organization.md) for the naming rules.
+written by the website's author take `argparse` flags instead of keyword arguments. Every
+script in a stage folder is named `s<N>_<name>.py`, where `<N>` is the order in which it runs: a
+script may only use the outputs of scripts with a smaller `<N>`, and scripts that share an `<N>`
+do not depend on each other.

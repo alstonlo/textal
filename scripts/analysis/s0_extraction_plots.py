@@ -46,23 +46,29 @@ def main(
     assert ext.select(pl.struct("identifier", "doi").is_unique().all()).item()
     theme.apply()
 
-    # Which papers of the corpus were extracted. Each paper went to exactly one run; a few Acta E
-    # papers came from the publisher's archive rather than the CSD's DOI list, so they are not in
-    # `metadata.parquet`.
-    runs = ext.group_by("doi").agg(pl.col("prompt_version").first().alias("run"))
+    # Which papers of the corpus were extracted. The corpus is the PMC download plus the extracted
+    # papers outside it: Acta E papers that came from the publisher's list, whose DOI the CSD does
+    # not record. Each paper went to exactly one run.
+    runs = ext.group_by("doi").agg(pl.col("prompt_version").first().alias("run"), rows=pl.len())
     assert (
         ext.group_by("doi").agg(pl.n_unique("prompt_version")).select(pl.last().max()).item() == 1
     )
-    done = meta.join(runs, on="doi", how="left").with_columns(pl.col("run").is_not_null())
-    outside = runs.filter(~pl.col("doi").is_in(meta["doi"].implode()))
+    done = meta.select("doi", "journal", "refcodes").join(runs, on="doi", how="full", coalesce=True)
+    outside = done.filter(pl.col("journal").is_null())
+    assert (outside["run"] == "v2-actae-anchored-1").all()
+    done = done.with_columns(
+        pl.col("run").is_not_null(),
+        pl.col("journal").fill_null(ACTA_E),
+        entries=pl.col("refcodes").list.len().fill_null(pl.col("rows")),
+    )
     print(
         done.select(
             papers=pl.len(),
             extracted=pl.col("run").sum(),
-            entries=pl.col("refcodes").list.len().sum(),
-            extracted_entries=pl.col("refcodes").list.len().filter(pl.col("run")).sum(),
+            entries=pl.col("entries").sum(),
+            extracted_entries=pl.col("entries").filter(pl.col("run")).sum(),
         ),
-        f"{len(outside)} extracted papers outside the PMC corpus",
+        f"{len(outside)} extracted papers outside the PMC download",
     )
     print(ext.group_by("prompt_version", "model").agg(papers=pl.n_unique("doi"), rows=pl.len()))
     print(ext.group_by("prompt_version", "extraction_status").len().sort(pl.all()))
