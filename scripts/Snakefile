@@ -1,10 +1,9 @@
-# The chain from the CSD metadata to the figures in assets/: the metadata of every CSD entry,
-# exported with the CSD Python API (which needs a CCDC licence, see the README), then the
-# open-access papers of the CSD entries, downloaded from PubMed Central (PMC), then parsed to
-# Markdown, then plotted. The extraction (`data/extractions.parquet`) and the Acta E collection
-# (`data/viz/`) are made elsewhere and taken as given, so
-# the figures that need them (`plot_extraction`, `example`) and the tables of the website
-# (`assets`) are not part of `all`.
+# The chain from the CSD metadata to the corpus: the metadata of every CSD entry, exported with
+# the CSD Python API (which needs a CCDC licence, see the README), then the open-access papers of
+# the CSD entries, downloaded from PubMed Central (PMC), then parsed to Markdown. The extraction
+# (`data/extractions.parquet`) and the Acta E collection (`data/viz/`) are made elsewhere and
+# taken as given, so the figures of the README (`plot_extraction`, `example`) and the tables of
+# the website (`assets`) are not part of `all`.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -16,18 +15,16 @@
 # Run from the repo root, where every path below is anchored:
 #
 #     pixi run snakemake -s scripts/Snakefile -n          # what would run
-#     pixi run snakemake -s scripts/Snakefile -j1 all     # the figures, and the data they need
+#     pixi run snakemake -s scripts/Snakefile -j1 all     # the corpus
 
 PAPERS = "data/papers"
 ASSETS = "src/viz/assets"
-PLOTS = ["years", "downloads"]
-EXTRACTION_PLOTS = ["extraction", "records"]
 
 
 rule all:
     default_target: True
     input:
-        expand("assets/{plot}.png", plot=PLOTS),
+        f"{PAPERS}/parsed.parquet",
 
 
 # The CSD Python API lives in its own pixi environment, `csd`.
@@ -56,23 +53,13 @@ rule parse:
         "python scripts/runs/bib/s1_parse.py"
 
 
-rule plot_papers:
-    input:
-        f"{PAPERS}/metadata.parquet",
-        f"{PAPERS}/parsed.parquet",
-    output:
-        expand("assets/{plot}.png", plot=PLOTS),
-    shell:
-        "python scripts/analysis/s0_paper_plots.py"
-
-
 rule plot_extraction:
     input:
         "data/extractions.parquet",
         f"{PAPERS}/metadata.parquet",
         "data/raw/csd_metadata.full.parquet",
     output:
-        expand("assets/{plot}.png", plot=EXTRACTION_PLOTS),
+        "assets/extraction.png",
     shell:
         "python scripts/analysis/s0_extraction_plots.py"
 

@@ -11,8 +11,8 @@
 TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization
 procedures and outcomes reported in their papers. We download the open-access papers of the CSD
 from PubMed Central (PMC), convert them to Markdown and use a large language model (LLM) to
-describe how each entry's compound was made and its crystals were grown, with quotes from the
-paper as evidence. The pairs support text-conditioned crystal structure prediction (CSP), which
+extract the synthesis and crystallization procedure of each entry, with quotes from the paper
+as evidence. The pairs support text-conditioned crystal structure prediction (CSP), which
 predicts the crystal that a molecule forms under a written procedure, and condition generation,
 which predicts a procedure that yields a given crystal.
 
@@ -79,7 +79,7 @@ quotes are verbatim by construction. The records of both runs are gathered in
 the runs apart.
 
 ```bash
-pixi run snakemake -s scripts/Snakefile -j1 plot_extraction   # Figures 1 and 2
+pixi run snakemake -s scripts/Snakefile -j1 plot_extraction   # Figure 1
 pixi run snakemake -s scripts/Snakefile -j1 example           # the example above (needs Chrome)
 ```
 
@@ -95,9 +95,9 @@ pixi run web --port 8000
 
 ## About TEXtal
 
-The CSD holds 1.4 million crystal structures, but it does not systematically record how the
-crystals were grown: its `solvent` field is a single string, empty for 84% of entries, and the
-procedures are in the papers. CSP models such as [Clari](https://github.com/the-matter-lab/clari)
+The CSD holds 1.4 million crystal structures, but it does not systematically record their
+crystallization procedures: its `solvent` field is a single string, empty for 84% of entries,
+and the procedures are only in the papers. CSP models such as [Clari](https://github.com/the-matter-lab/clari)
 predict how a molecule packs into a crystal from the molecule alone, yet the same molecule can
 form different crystals (polymorphs, solvates or salts) depending on how it is crystallized.
 Text-conditioned CSP and condition generation both need crystallization procedures linked to
@@ -121,11 +121,11 @@ reasoning effort `high`, which gave the same matches and core paragraphs as `max
 faster.
 
 **Results.** The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus
-(Figure 1): 23,420 entries from 23,077 Acta E papers (85% of Acta E) and 21,646 entries from
+(Figure 1a): 23,420 entries from 23,077 Acta E papers (85% of Acta E) and 21,646 entries from
 5,843 papers in other journals (21%), extracted in about six hours. The model wrote a record for
 44,826 entries (99.5%) and rated 98% of its matches high confidence. Of the records, 97%
 describe the synthesis, 87% the crystallization, 62% the characterization, 46% the purpose and
-properties and 42% the solid form (Figure 2); the Acta E run, reading experimental sections
+properties and 42% the solid form (Figure 1b); the Acta E run, reading experimental sections
 only, nearly always has the first two and rarely the rest. Of the 39,082 entries with a
 crystallization paragraph, 71% have an empty `solvent` field in the CSD. In a manual check of 10
 papers, the model matched all 23 entries to the right compound; of its 337 quotes, 27 differed
@@ -133,23 +133,15 @@ from the paper, mostly in hyphenation or letter case. Of the papers, 74% are und
 Commons Attribution (CC BY), so their text can be shared.
 
 <div align="center"><figure>
-<img src="assets/extraction.png" width="700" alt="Extracted and not yet extracted papers of the ten largest journals">
-<figcaption>
-<strong>Figure 1.</strong> The papers of the ten largest journals, split into those the model has
-read (blue) and those still waiting (grey), with the share read. The extraction ran journal by
-journal and stopped at the end of the hackathon, in the middle of Inorganic Chemistry.
-</figcaption>
+<img src="assets/extraction.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
 </figure></div>
 
-<div align="center"><figure>
-<img src="assets/records.png" width="700" alt="Filled paragraphs and match confidence of the two runs">
-<figcaption>
-<strong>Figure 2.</strong> The records of the two runs. Left, the share of records with each
-paragraph filled; right, the confidence of the match between the CSD entry and the compound in
-the paper. The Acta E run read only the experimental sections, so its records rarely cover
-characterization, purpose or the solid form.
-</figcaption>
-</figure></div>
+> **Figure 1.** (a) The papers of the ten largest journals, split into those the model
+has read (blue) and those still waiting (grey), with the share read. The extraction ran journal
+by journal and stopped at the end of the hackathon, in the middle of Inorganic Chemistry. (b) The
+share of records with each paragraph filled, per run. The Acta E run read only the experimental
+sections, so its records rarely cover characterization, purpose or the solid form. (c) The
+confidence of the match between the CSD entry and the compound in the paper.
 
 **Next steps.** Finish the extraction (26,041 papers, mostly general chemistry journals, and the
 4,149 Acta E papers the second run had not reached); check every quote of the full-text run

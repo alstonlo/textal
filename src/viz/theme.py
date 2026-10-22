@@ -2,7 +2,6 @@ from pathlib import Path
 
 import matplotlib as mpl
 import seaborn as sns
-from matplotlib.colors import LinearSegmentedColormap
 
 PAPER_DPI = 200
 WIDTH = 5.5
@@ -12,11 +11,6 @@ BUTTER = ["#EEB089", "#FAE69E"]
 PERIWINKLE = ["#ACBCE4", "#8193C7", "#5A6AA8", "#394287", "#1E1D60"]
 GRADIENT = ROSEWOOD + BUTTER + PERIWINKLE
 PALETTE = [GRADIENT[i] for i in (9, 3, 2, 8, 10, 0)]
-
-DIVERGING = LinearSegmentedColormap.from_list("diverging", GRADIENT)
-DIVERGING.set_bad("0.6")
-SEQUENTIAL = LinearSegmentedColormap.from_list("sequential", GRADIENT[5:])
-SEQUENTIAL.set_bad("0.6")
 
 
 def save(fig, out: Path) -> None:

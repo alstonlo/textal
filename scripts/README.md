@@ -8,8 +8,8 @@ for how to run them in order.
 ```bash
 pixi install
 pixi run snakemake -s scripts/Snakefile -n                   # what would run
-pixi run snakemake -s scripts/Snakefile -j1 all              # the corpus figures, and the data they need
-pixi run snakemake -s scripts/Snakefile -j1 plot_extraction  # the extraction figures
+pixi run snakemake -s scripts/Snakefile -j1 all              # the corpus
+pixi run snakemake -s scripts/Snakefile -j1 plot_extraction  # the extraction figure
 pixi run snakemake -s scripts/Snakefile -j1 example          # the README's example record (needs Chrome)
 pixi run snakemake -s scripts/Snakefile -j1 assets           # the tables of the website
 ```
