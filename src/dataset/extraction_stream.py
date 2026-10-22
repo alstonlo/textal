@@ -67,9 +67,9 @@ FRONT_MATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
 # Exit status meaning "stopped early, papers left": the wrapper restarts the runner.
 MORE_TO_DO = 3
 
-# Seconds every request waits after a 429; the model's output-token quota refills
-# within about a minute.
-COOLDOWN = 60
+# Seconds every request waits after a 429. Kept short: the quota refills steadily,
+# and a long pause leaves the whole pool idle after every hit.
+COOLDOWN = 15
 
 
 def corpus() -> pl.DataFrame:
