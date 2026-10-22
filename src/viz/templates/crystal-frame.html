@@ -3,11 +3,14 @@
   <head>
     <meta charset="utf-8">
     <meta name="root" content="{{ root }}">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Publisher CIF · interactive crystal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>TEXtal | Crystal viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap"
+          rel="stylesheet">
     <link rel="stylesheet" href="{{ root }}/static/style.css">
     <link rel="stylesheet" href="{{ root }}/static/publisher-media.css">
-    <style>body{margin:0;padding:0;background:#fcfdfb;font:12px system-ui,sans-serif;color:#20372f}.frame-root{padding:0 2px;width:100%;margin:0}.frame-root section{padding:0}.frame-root .crystal-controls{margin-top:12px}.frame-root .crystal-canvas{height:560px}@media(max-width:650px){.frame-root .crystal-canvas{height:400px}}.frame-root .media-empty{padding:12px}.frame-root .crystal-info{margin-bottom:4px}.frame-root .media-hint{margin:8px 0}.frame-root select{max-width:100%}</style>
     <script defer src="{{ root }}/static/vendor/3Dmol-min.js"></script>
     <script defer src="{{ root }}/static/crystal-frame.js"></script>
   </head>

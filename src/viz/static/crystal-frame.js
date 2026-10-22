@@ -32,7 +32,8 @@ var ROOT = document.querySelector('meta[name="root"]').content;
     viewer,
     model,
     active = true;
-  const el = (c) => root.querySelector("." + c);
+  const el = (c) => root.querySelector("." + c),
+    on = (c) => el(c).getAttribute("aria-pressed") === "true";
   function frameSize() {
     parent.postMessage(
       { type: "crystal-frame-size", height: Math.ceil(root.scrollHeight + 5) },
@@ -45,7 +46,7 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       scheme = { prop: "elem", map: colours };
     for (let i = 0; i < 2; i++) {
       const opacity = i === 0 ? 1 : 0.4,
-        visible = i === 0 || el("crystal-shell").checked;
+        visible = i === 0 || on("crystal-shell");
       viewer.setStyle(
         { model: i },
         visible
@@ -56,7 +57,7 @@ var ROOT = document.querySelector('meta[name="root"]').content;
           : {},
       );
     }
-    if (!el("crystal-h").checked) viewer.setStyle({ elem: "H" }, {});
+    if (!on("crystal-h")) viewer.setStyle({ elem: "H" }, {});
     viewer.render();
   }
   function draw() {
@@ -77,7 +78,7 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       );
       viewer.addModel(packing ? g.shell_xyz : "0\n\n", "xyz");
       const point = (p) => ({ x: p[0], y: p[1], z: p[2] });
-      if (el("crystal-cell").checked) {
+      if (on("crystal-cell")) {
         for (const [i, vec] of g.lattice.entries())
           viewer.addArrow({
             start: { x: 0, y: 0, z: 0 },
@@ -100,9 +101,9 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       viewer.render();
       const count = model.selectedAtoms({}).length;
       el("crystal-info").textContent =
-        `data_${block.name} · ${count} parsed atoms · ${packing ? "whole molecules in unit cell" : "asymmetric unit"}`;
+        `data_${block.name} · ${count} atoms · ${packing ? "whole molecules in the unit cell" : "asymmetric unit"}`;
       el("crystal-cell-info").textContent =
-        `a ${block.cell[0]}, b ${block.cell[1]}, c ${block.cell[2]} Å · α ${block.cell[3]}, β ${block.cell[4]}, γ ${block.cell[5]}°`;
+        `a ${block.cell[0]}, b ${block.cell[1]}, c ${block.cell[2]} Å; α ${block.cell[3]}, β ${block.cell[4]}, γ ${block.cell[5]}°`;
       parent.postMessage(
         {
           type: "crystal-frame-ready",
@@ -129,15 +130,24 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       );
       data = await response.json();
       if (!response.ok) throw Error(data.error || "CIF parsing failed");
-      root.innerHTML = `<label class="figure-select">Structure block<select class="cif-block">${data.blocks.map((b, i) => `<option value="${i}">data_${esc(b.name)}</option>`).join("")}</select></label><div class="crystal-controls"><label>View<select class="crystal-mode"><option value="cell">Crystal packing · unit cell</option><option value="asu">Asymmetric unit</option></select></label><label><input type="checkbox" class="crystal-shell"> Surroundings</label><label><input type="checkbox" class="crystal-h" checked> Hydrogens</label><label><input type="checkbox" class="crystal-cell" checked> Cell axes</label><button class="button crystal-reset">Reset</button><button class="button crystal-spin" aria-pressed="false">Rotate</button></div><div class="crystal-canvas" role="img" aria-label="Interactive crystal model: drag to rotate, scroll to zoom"></div><p class="crystal-info" role="status"></p><p class="crystal-cell-info"></p><p class="media-hint">Drag to rotate · scroll to zoom. Axes: a red, b green, c blue.</p>`;
+      const toggle = (c, label, pressed) =>
+        `<button type="button" class="chip ${pressed ? "on " : ""}${c}" aria-pressed="${pressed}">${label}</button>`;
+      root.innerHTML = `<div class="tools"><select class="cif-block" aria-label="Structure block"${data.blocks.length > 1 ? "" : " hidden"}>${data.blocks.map((b, i) => `<option value="${i}">data_${esc(b.name)}</option>`).join("")}</select><select class="crystal-mode" aria-label="View"><option value="cell">Unit cell packing</option><option value="asu">Asymmetric unit</option></select><div class="chips">${toggle("crystal-shell", "Surroundings", false)}${toggle("crystal-h", "Hydrogens", true)}${toggle("crystal-cell", "Cell axes", true)}</div><div class="chips count">${toggle("crystal-spin", "Rotate", false)}<button type="button" class="chip crystal-reset">Reset view</button></div></div><div class="crystal-canvas" role="img" aria-label="Interactive crystal model: drag to rotate, scroll to zoom"></div><div class="viewer-foot"><p class="muted small crystal-info" role="status"></p><p class="muted small num crystal-cell-info"></p></div><p class="media-hint">Drag to rotate, scroll to zoom. The cell is drawn with its a, b and c axes in red, green and blue.</p>`;
       viewer = $3Dmol.createViewer(el("crystal-canvas"), {
         backgroundColor: "#ffffff",
         antialias: true,
       });
-      for (const c of ["cif-block", "crystal-mode", "crystal-cell"])
-        el(c).onchange = draw;
-      el("crystal-h").onchange = style;
-      el("crystal-shell").onchange = style;
+      for (const c of ["cif-block", "crystal-mode"]) el(c).onchange = draw;
+      for (const [c, after] of [
+        ["crystal-cell", draw],
+        ["crystal-h", style],
+        ["crystal-shell", style],
+      ])
+        el(c).onclick = () => {
+          el(c).classList.toggle("on", !on(c));
+          el(c).setAttribute("aria-pressed", String(on(c)));
+          after();
+        };
       el("crystal-reset").onclick = () => {
         viewer.zoomTo({ model: 0 });
         viewer.render();
@@ -145,7 +155,8 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       el("crystal-spin").onclick = () => {
         const spin = el("crystal-spin").getAttribute("aria-pressed") !== "true";
         el("crystal-spin").setAttribute("aria-pressed", String(spin));
-        el("crystal-spin").textContent = spin ? "Stop rotation" : "Rotate";
+        el("crystal-spin").textContent = spin ? "Stop" : "Rotate";
+        el("crystal-spin").classList.toggle("on", spin);
         viewer.spin(spin);
       };
       draw();
@@ -155,7 +166,7 @@ var ROOT = document.querySelector('meta[name="root"]').content;
         }
       }).observe(root);
     } catch (error) {
-      root.innerHTML = `<p class="media-empty">Could not render: ${esc(error.message)}</p><p>Use the original CIF download to inspect this structure.</p>`;
+      root.innerHTML = `<p class="media-empty">Could not render this CIF: ${esc(error.message)}. Use the original publisher download to inspect the structure.</p>`;
       console.error("CIF frame failed", error);
       frameSize();
     }

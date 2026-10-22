@@ -34,7 +34,7 @@ def main(
     out: str = str(REPO_ROOT / "assets"),
     top: int = 10,
 ):
-    """Plots the figure of the README, `<out>/extraction.png`, and prints its statistics.
+    """Plots the figure of the README, `<out>/results.png`, and prints its statistics.
 
     The figure has three panels: the papers of the `top` journals split into extracted and not
     yet extracted, and the records of each run (filled paragraphs and match confidence).
@@ -115,11 +115,10 @@ def main(
         shares = [row[f] for f in FIELDS]
         ax.bar(x + 0.4 * i - 0.2, shares, width=0.4, color=theme.PALETTE[i], lw=0, label=label)
     ax.set_xticks(x, list(FIELDS.values()))
-    ax.set_ylim(0, 135)
-    ax.set_yticks(range(0, 101, 20))
+    ax.set_ylim(0, 100)
     ax.set_ylabel("Records (%)")
-    ax.set_title(f"(b) Filled paragraphs of the {len(ext):,} records")
-    ax.legend(fontsize=6, loc="upper right")
+    ax.set_title(f"(b) Filled paragraphs of the {len(ext):,} records", pad=16)
+    ax.legend(fontsize=6, loc="lower left", bbox_to_anchor=(0, 1), ncols=2, frameon=False)
 
     ax = axes["confidence"]
     bottom = np.zeros(len(RUNS))
@@ -141,7 +140,7 @@ def main(
     plt.setp(axes["filled"].get_xticklabels(), ha="right", rotation_mode="anchor")
     for ax in (axes["filled"], axes["confidence"]):
         ax.grid(axis="y", lw=0.4, alpha=0.5)
-    theme.save(fig, out / "extraction")
+    theme.save(fig, out / "results")
 
     # How often the crystallisation paragraph fills a gap in the CSD, whose `solvent` field is
     # the only crystallisation condition it records.

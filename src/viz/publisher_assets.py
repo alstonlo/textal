@@ -109,7 +109,7 @@ def assets(pmcid):
         if os.environ.get("TEXTAL_SSH_CONTROL"):
             command += ["-o", "ControlPath=" + os.environ["TEXTAL_SSH_CONTROL"]]
         command += [
-            os.environ.get("TEXTAL_ARCHIVE_SSH", "auhcheng@trillium.alliancecan.ca"),
+            os.environ["TEXTAL_ARCHIVE_SSH"],
             "ssh -o BatchMode=yes "
             + shlex.quote(os.environ.get("TEXTAL_ARCHIVE_NODE", "tri-dm2"))
             + " "

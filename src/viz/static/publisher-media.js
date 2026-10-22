@@ -32,7 +32,7 @@ window.PaperMedia = (() => {
       abort = new AbortController(),
       state = { root, abort, paper, ref, frame: null };
     current = state;
-    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">Publisher CIFs and chemical schemes from the downloaded article package. Files are paper-level assets; a structure block is not automatically assigned to the selected CSD refcode.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF · interactive 3D</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
+    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">Publisher CIFs and chemical schemes from the downloaded article package. Files are paper-level assets; a structure block is not automatically assigned to the selected CSD refcode.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
     const status = root.querySelector(".media-asset-status");
     if (!paper.pmcid) {
       status.textContent = "No PMC archive link";
@@ -81,7 +81,7 @@ window.PaperMedia = (() => {
         '<p class="media-empty">No coordinate-bearing CIF was found in this saved package.</p>';
       return;
     }
-    host.innerHTML = `<label class="figure-select">CIF file<select class="cif-file">${files.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></label><iframe class="crystal-frame" title="Interactive publisher CIF crystal viewer"></iframe><div class="crystal-downloads"></div><p class="media-hint">Paper-level CIF. Choose the appropriate structure block when the file contains multiple compounds or forms. Displayed bonds are inferred from coordinates.</p>`;
+    host.innerHTML = `<div class="tools"${files.length > 1 ? "" : " hidden"}><select class="cif-file" aria-label="CIF file">${files.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div><iframe class="crystal-frame" title="Interactive publisher CIF crystal viewer"></iframe><div class="crystal-downloads"></div><p class="media-hint">The CIF belongs to the paper, so pick the structure block that matches this refcode when the file holds several compounds or forms. Bonds are inferred from the coordinates.</p>`;
     const choice = host.querySelector(".cif-file");
     choice.value = Math.min(
       selections.get(state.paper.pmcid) || 0,
@@ -99,7 +99,7 @@ window.PaperMedia = (() => {
       state.frame.src = ROOT + "/crystal-frame.html?" + query;
       selections.set(state.paper.pmcid, i);
       host.querySelector(".crystal-downloads").innerHTML =
-        `<a class="button" href="${esc(f.local_url)}" download="${esc(f.name)}">↓ Original publisher CIF</a><span>${(f.bytes / 1000).toFixed(1)} kB</span>`;
+        `<a class="chip" href="${esc(f.local_url)}" download="${esc(f.name)}">↓ Original publisher CIF</a><span>${esc(f.name)} · ${(f.bytes / 1000).toFixed(1)} kB</span>`;
     }
     choice.onchange = show;
     show();
@@ -112,12 +112,12 @@ window.PaperMedia = (() => {
         '<p class="media-empty">No publisher chemical scheme was found in this saved package.</p>';
       return;
     }
-    host.innerHTML = `${figs.length > 1 ? `<label class="figure-select">Chemical scheme<select>${figs.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></label>` : ""}<figure class="publisher-figure"></figure>`;
+    host.innerHTML = `${figs.length > 1 ? `<div class="tools"><select aria-label="Chemical scheme">${figs.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div>` : ""}<figure class="publisher-figure"></figure>`;
     const choice = host.querySelector("select");
     function show() {
       const f = figs[choice ? Number(choice.value) : 0];
       host.querySelector(".publisher-figure").innerHTML =
-        `<a href="${esc(f.local_url)}" target="_blank" rel="noopener" title="Open original chemical scheme"><img src="${esc(f.local_url)}" alt="Publisher chemical scheme"></a><figcaption><span>${esc(f.name)}</span></figcaption><a class="button" href="${esc(f.local_url)}" download="${esc(f.name)}">↓ Original chemical scheme</a>`;
+        `<a href="${esc(f.local_url)}" target="_blank" rel="noopener" title="Open original chemical scheme"><img src="${esc(f.local_url)}" alt="Publisher chemical scheme"></a><figcaption><a class="chip" href="${esc(f.local_url)}" download="${esc(f.name)}">↓ Original chemical scheme</a><span>${esc(f.name)}</span></figcaption>`;
     }
     if (choice) choice.onchange = show;
     show();

@@ -11,7 +11,9 @@
     <p class="small muted name-source">{{ e.name_source }}</p>
     <p class="facts muted">{{ paper.journal }} · {{ paper.year or 'Year unknown' }} · <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">{{ e.doi }} ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
     target="_blank"
-    rel="noopener">{{ paper.pmcid }} ↗</a>{% endif %}</p>
+    rel="noopener">{{ paper.pmcid }} ↗</a>{% endif %} · <a href="https://www.ccdc.cam.ac.uk/structures/Search?Ccdcid={{ e.id }}&amp;DatabaseToSearch=Published"
+    target="_blank"
+    rel="noopener">CSD {{ e.id }} ↗</a></p>
     <nav class="entry-navigation">{% if previous %}<a class="chip" href="{{ root }}/entry/{{ previous }}">← {{ previous }}</a>{% endif %}<form action="{{ root }}/explore"><input name="q"
        placeholder="Jump to refcode or DOI"
        aria-label="Find another entry"><button type="submit" class="chip">Find</button></form>{% if next %}<a class="chip" href="{{ root }}/entry/{{ next }}">{{ next }} →</a>{% endif %}</nav>

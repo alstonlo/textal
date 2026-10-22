@@ -39,7 +39,7 @@
   <section class="block">
     <h2>The corpus</h2>
     <p class="muted">Article identities and publication years come from publisher records and Europe PMC. The charts describe the papers and refcode links currently imported into this browser.</p>
-    <p class="small muted">Licence labels reflect indexed publisher evidence; missing terms are shown as not indexed.</p>
+    <p class="small muted">Licence labels reflect indexed publisher evidence; papers with no indexed terms are counted under Other.</p>
     <div class="charts">
       <figure>
         <figcaption>Refcode links by the paper’s publication year</figcaption>
@@ -51,11 +51,11 @@
       </figure>
       <figure>
         <figcaption>Journals represented in the imported papers</figcaption>
-        <div class="plot tall" id="journals"></div>
+        <div class="plot" id="journals"></div>
       </figure>
       <figure>
         <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} imported papers</figcaption>
-        <div class="plot tall" id="licenses"></div>
+        <div class="plot" id="licenses"></div>
       </figure>
     </div>
   </section>
@@ -67,7 +67,11 @@ const FIGURES = {{ stats.figures|tojson }};
 function drawCharts() {
   const tokens = getComputedStyle(document.documentElement);
   for (const [id, fig] of Object.entries(FIGURES)) {
-    for (const t of fig.data) t.marker = {...t.marker, color: tokens.getPropertyValue(`--${t.meta}`).trim()};
+    for (const t of fig.data) {
+      const color = tokens.getPropertyValue(`--${t.meta}`).trim();
+      t.marker = {...t.marker, color};
+      t.line = {...t.line, color};
+    }
     Plotly.newPlot(id, fig.data, fig.layout, {responsive: true, displayModeBar: false});
   }
 }

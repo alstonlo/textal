@@ -3,7 +3,6 @@
 import json
 import math
 import os
-import textwrap
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -47,7 +46,9 @@ def figure(traces: list, **layout) -> dict:
 
     # The axes of `theme.apply()`: a thin black frame and outward ticks. A value axis turns on
     # its faint grid through `layout`, which is applied last so that it wins over the defaults.
+    # The margins are fixed, not fitted to the tick labels, so every chart has the same plot area.
     axis = {
+        "automargin": False,
         "showgrid": False,
         "gridcolor": GRID,
         "zeroline": False,
@@ -70,13 +71,71 @@ def figure(traces: list, **layout) -> dict:
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font={"family": "Inter, system-ui, sans-serif", "color": MUTED, "size": 12},
-        margin={"l": 4, "r": 12, "t": 8, "b": 4},
+        margin={"l": 60, "r": 12, "t": 8, "b": 96},
         hoverlabel={"bgcolor": INK, "bordercolor": INK, "font": {"color": "#FFFFFF"}},
         showlegend=False,
         bargap=0.3,
     )
     fig.update_layout(**layout)
     return json.loads(fig.to_json())
+
+
+# The licence of a paper, from the first of these tokens found in its licence evidence: a
+# Creative Commons URL (Acta E, where the URL is sometimes only quoted in the evidence text) or
+# the licence code of its PMC record (the other journals), where "TDM" marks an author
+# manuscript. The order matters, as "cc by" is a prefix of the other codes.
+LICENCES = [
+    (("publicdomain/zero", "cc0"), "CC0"),
+    (("licenses/by-nc-nd/", "cc by-nc-nd"), "CC BY-NC-ND"),
+    (("licenses/by-nc-sa/", "cc by-nc-sa"), "CC BY-NC-SA"),
+    (("licenses/by-nc/", "cc by-nc"), "CC BY-NC"),
+    (("licenses/by-sa/", "cc by-sa"), "CC BY-SA"),
+    (("licenses/by/", "cc by"), "CC BY"),
+    (("tdm",), "Author manuscript"),
+]
+PUBLISHER_TERMS, NOT_INDEXED = "Publisher terms", "Not indexed"
+
+# The names of the largest journals on the chart; the tables keep the publisher's names.
+JOURNAL_ALIASES = {
+    "Acta Crystallographica E": "Acta Cryst. E",
+    "Angew.Chem.,Int.Ed.": "Angew. Chem.",
+    "Chem.-Eur.J.": "Chem. Eur. J.",
+    "Inorg.Chem.": "Inorg. Chem.",
+    "Cryst.Growth Des.": "Cryst. Growth Des.",
+}
+
+
+def bars(counts: list[tuple[str, int]], other: str) -> dict:
+    """A vertical bar chart of paper counts, one bar per name; the bar named `other` is grey."""
+    labels = [JOURNAL_ALIASES.get(n, n) for n, _ in counts]
+    traces = []
+    for colour in ("bar-warm", "bar-other"):
+        group = [
+            (name, n, label)
+            for (name, n), label in zip(counts, labels, strict=True)
+            if (name == other) == (colour == "bar-other")
+        ]
+        if group:
+            traces.append(
+                go.Bar(
+                    x=[lab for _, _, lab in group],
+                    y=[n for _, n, _ in group],
+                    customdata=[name for name, _, _ in group],
+                    meta=colour,
+                    hovertemplate="%{customdata}: %{y:,}<extra></extra>",
+                )
+            )
+    return figure(
+        traces,
+        barmode="overlay",
+        xaxis={"categoryorder": "array", "categoryarray": labels, "tickangle": -45},
+        yaxis={
+            "title": {"text": "Papers"},
+            "tickformat": "~s",
+            "showgrid": True,
+            "range": [0, 1.1 * max(n for _, n in counts)],
+        },
+    )
 
 
 def load_stats(entries):
@@ -89,91 +148,41 @@ def load_stats(entries):
     journals = Counter(p["journal"] for p in PAPERS.values())
     licenses = Counter()
     for p in PAPERS.values():
-        urls = " ".join(lic.get("url") or "" for lic in p["licenses"]).lower()
-        license_name = "Not indexed"
-        for token, name in [
-            ("publicdomain/zero", "CC0"),
-            ("licenses/by-nc-nd/", "CC BY-NC-ND"),
-            ("licenses/by-nc-sa/", "CC BY-NC-SA"),
-            ("licenses/by-nc/", "CC BY-NC"),
-            ("licenses/by-sa/", "CC BY-SA"),
-            ("licenses/by/", "CC BY"),
-        ]:
-            if token in urls:
-                license_name = name
-                break
-        if license_name == "Not indexed" and urls:
-            license_name = "Other publisher terms"
-        licenses[license_name] += 1
-    tips = {
-        "orientation": "h",
-        "texttemplate": "\u2002%{x:,}",
-        "textfont": {"color": INK, "size": 10},
-        "textposition": "outside",
-        "cliponaxis": False,
-        "hovertemplate": "%{customdata}: %{x:,}<extra></extra>",
-    }
+        text = " ".join(f"{e.get('url')} {e.get('type')} {e.get('text')}" for e in p["licenses"])
+        text = text.lower()
+        names = [name for tokens, name in LICENCES if any(t in text for t in tokens)]
+        if names:
+            licenses[names[0]] += 1
+        else:
+            licenses[PUBLISHER_TERMS if p["licenses"] else NOT_INDEXED] += 1
 
-    def horizontal(counts, journal_chart=False):
-        # Use the original main's compact, wrapped labels and black count text.
-        # Keep the complete publisher journal name in hover text.
-        aliases = {
-            "Angewandte Chemie (International ed. in English)": "Angewandte Chemie Int. Ed.",
-            "Chemistry (Weinheim an der Bergstrasse, Germany)": "Chemistry",
-            "Advanced science (Weinheim, Baden-Wurttemberg, Germany)": "Advanced Science",
-        }
-        items = list(counts)
-        labels = [
-            "<br>".join(textwrap.wrap(aliases.get(name, name) if journal_chart else name, 16))
-            for name, _ in items
-        ]
-        primary = [
-            (name, n, label)
-            for (name, n), label in zip(items, labels, strict=True)
-            if name != "Other journals"
-        ]
-        other = [
-            (name, n, label)
-            for (name, n), label in zip(items, labels, strict=True)
-            if name == "Other journals"
-        ]
-        traces = [
-            go.Bar(
-                **tips,
-                x=[n for _, n, _ in group],
-                y=[label for _, _, label in group],
-                customdata=[name for name, _, _ in group],
-                meta=colour,
-            )
-            for group, colour in ((primary, "bar-warm"), (other, "bar-other"))
-            if group
-        ]
-        return figure(
-            traces,
-            barmode="overlay",
-            xaxis={
-                "title": {"text": "Papers"},
-                "tickformat": "~s",
-                "showgrid": True,
-                "range": [0, max([n for _, n in items] or [1]) * 1.3],
-            },
-            yaxis={"autorange": "reversed", "categoryorder": "array", "categoryarray": labels},
-        )
-
-    top = journals.most_common(12)
-    if len(journals) > 12:
+    # The largest journals and licences, the rest bucketed into one bar.
+    top = journals.most_common(6)
+    if len(journals) > 6:
         top.append(("Other journals", sum(journals.values()) - sum(n for _, n in top)))
+    common = licenses.most_common(5)
+    if len(licenses) > 5:
+        common.append(("Other", sum(licenses.values()) - sum(n for _, n in common)))
     y = sorted(years)
+    line = {
+        "mode": "lines+markers",
+        "marker": {"size": 5},
+        "meta": "bar",
+        "hovertemplate": "%{x}: %{y:,}<extra></extra>",
+    }
     figures = {
         "coverage": figure(
-            [go.Bar(x=y, y=[refyears.get(v, 0) for v in y], meta="bar")],
-            yaxis={"title": {"text": "Refcode links"}},
+            [go.Scatter(x=y, y=[refyears.get(v, 0) for v in y], **line)],
+            xaxis={"title": {"text": "Publication year"}},
+            yaxis={"title": {"text": "Refcode links"}, "rangemode": "tozero"},
         ),
         "pmc_years": figure(
-            [go.Bar(x=y, y=[years[v] for v in y], meta="bar")], yaxis={"title": {"text": "Papers"}}
+            [go.Scatter(x=y, y=[years[v] for v in y], **line)],
+            xaxis={"title": {"text": "Publication year"}},
+            yaxis={"title": {"text": "Papers"}, "rangemode": "tozero"},
         ),
-        "journals": horizontal(top, journal_chart=True),
-        "licenses": horizontal(licenses.most_common()),
+        "journals": bars(top, other="Other journals"),
+        "licenses": bars(common, other="Other"),
     }
     return {
         "counts": {

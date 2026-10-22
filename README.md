@@ -95,17 +95,21 @@ pixi run web --port 8000
 
 ## About TEXtal
 
-The CSD holds 1.4 million crystal structures, but it does not systematically record their
-crystallization procedures: its `solvent` field is a single string, empty for 84% of entries,
-and the procedures are only in the papers. CSP models such as [Clari](https://github.com/the-matter-lab/clari)
-predict how a molecule packs into a crystal from the molecule alone, yet the same molecule can
-form different crystals (polymorphs, solvates or salts) depending on how it is crystallized.
-Text-conditioned CSP and condition generation both need crystallization procedures linked to
-crystal structures, and we found no public dataset that provides them for the CSD.
+CSP models such as [Clari](https://github.com/the-matter-lab/clari) predict how a molecule
+packs into a crystal from the molecule alone, yet the same molecule can form different crystals
+(polymorphs, solvates or salts) depending on how it is crystallized. The procedure is the missing
+input, and it is recorded nowhere but in the papers: the CSD does not store it, and we found no
+public dataset that pairs CSD structures with their crystallization procedures. Mining them from
+the literature is limited by access rather than by method. Of the 554,956 papers the CSD cites,
+the 56,225 in PMC's open-access list (121,147 entries, and about one in five new entries since
+2020) can be downloaded and read; the rest sit behind publisher sites. TEXtal is the extraction of
+that slice. For scale, the text-mined inorganic synthesis dataset of
+[Kononova et al. (2019)](https://doi.org/10.1038/s41597-019-0224-1), which became a standard
+training set, holds 19,488 recipes; TEXtal already holds 39,082 entries with a crystallization
+paragraph.
 
-**Approach.** The CSD entries cite 554,956 unique DOIs, of which 56,225 are in PMC's list. Most
-publisher sites block automated downloads, but PMC's open-access bucket on Amazon Web Services
-(AWS) allows them: it held 54,961 of the papers (203 GB), every one with its full text as XML,
+**Approach.** PMC's open-access bucket on Amazon Web Services (AWS) allows automated
+downloads: it held 54,961 of the 56,225 papers (203 GB), every one with its full text as XML,
 which pandoc converts to Markdown without OCR. Supplementary PDFs go through PyMuPDF4LLM; the
 1.6% that are scanned still need MinerU. We send one LLM request per paper, with its text and a
 table of its CSD entries (refcode, CCDC number, name and formula). For each entry, the model
@@ -126,14 +130,13 @@ faster.
 44,826 entries (99.5%) and rated 98% of its matches high confidence. Of the records, 97%
 describe the synthesis, 87% the crystallization, 62% the characterization, 46% the purpose and
 properties and 42% the solid form (Figure 1b); the Acta E run, reading experimental sections
-only, nearly always has the first two and rarely the rest. Of the 39,082 entries with a
-crystallization paragraph, 71% have an empty `solvent` field in the CSD. In a manual check of 10
+only, nearly always has the first two and rarely the rest. In a manual check of 10
 papers, the model matched all 23 entries to the right compound; of its 337 quotes, 27 differed
 from the paper, mostly in hyphenation or letter case. Of the papers, 74% are under Creative
 Commons Attribution (CC BY), so their text can be shared.
 
 <div align="center"><figure>
-<img src="assets/extraction.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
+<img src="assets/results.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
 </figure></div>
 
 > **Figure 1.** (a) The papers of the ten largest journals, split into those the model
@@ -146,7 +149,7 @@ confidence of the match between the CSD entry and the compound in the paper.
 **Next steps.** Finish the extraction (26,041 papers, mostly general chemistry journals, and the
 4,149 Acta E papers the second run had not reached); check every quote of the full-text run
 against the source text automatically; derive fixed fields (method, solvents, temperature, time)
-from the paragraphs and compare them with the CSD's `solvent` field; run OCR on the scanned
+from the paragraphs; run OCR on the scanned
 supplementary PDFs; and release the records of the CC BY papers as a public dataset.
 
 ## Licence
