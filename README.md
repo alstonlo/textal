@@ -3,14 +3,10 @@
 # TEXtal
 
 **A dataset that pairs crystal structures with the crystallization procedures and outcomes
-reported in their papers.**
-
-<br>
-<br>
+reported in their papers, for text-conditioned crystal structure prediction and
+crystallization condition generation.**
 
 <img src="docs/assets/record.png" width="800" alt="Crystal structure beside procedure fields and supporting quotes">
-
-*Record layout. Bracketed text describes the fields to be filled during extraction.*
 
 </div>
 
@@ -18,7 +14,9 @@ TEXtal links entries in the Cambridge Structural Database (CSD) to the crystalli
 procedures and outcomes reported in their papers. We download these open-access papers from
 PubMed Central (PMC), convert them to Markdown, and use a large language model (LLM) to describe
 how each entry's compound was made and its crystals were grown. Each record includes quotes
-from the paper as evidence.
+from the paper as evidence. The pairs support two tasks: text-conditioned crystal structure
+prediction (CSP), which predicts the crystal that a molecule forms under a written procedure, and
+condition generation, which predicts a procedure that yields a given crystal.
 
 ---
 
@@ -90,22 +88,29 @@ its molecule, its CSD metadata, its paper and its extracted record.
 See [`docs/project-organization.md`](docs/project-organization.md) for the repository layout
 and [`scripts/README.md`](scripts/README.md) for the script order.
 
-## Write-up
+## About TEXtal
 
 The Cambridge Structural Database (CSD) holds 1.4 million crystal structures, but does not
 systematically record how the crystals were grown. Those procedures are described in the papers.
 We built TEXtal, an open pipeline that downloads the 54,961 open-access CSD papers from
 PubMed Central (PMC), converts them to Markdown,
 and uses a large language model (LLM) to write a record for each CSD entry: how the compound was
-made and how its crystals were grown, backed by quotes from the paper. In a pilot of 200 random
+made and how its crystals were grown, backed by quotes from the paper. These records can train
+models for text-conditioned crystal structure prediction (CSP) and for condition generation.
+In a pilot of 200 random
 papers, it returned a record for all 437 CSD entries in under 3 minutes. In a separate pilot of
 10 papers, our manual check found that all 23 CSD entries were matched to the right compound.
 
 ### Why
 
-Models such as [Clari](https://github.com/the-matter-lab/clari) predict how a molecule packs into
-a crystal, but not which solvent, method and temperature produce that crystal. To learn these
-conditions, a model needs crystallization procedures linked to crystal structures. The CSD has a
+CSP models such as [Clari](https://github.com/the-matter-lab/clari) predict how a molecule packs
+into a crystal from the molecule alone. But the same molecule can form different crystals
+(polymorphs, solvates or salts) depending on how it is crystallized, and these models cannot
+take the crystallization procedure as input. They also cannot say which solvent, method and
+temperature produce a given crystal. Both tasks need crystallization procedures linked to crystal
+structures. In text-conditioned CSP, a model predicts the crystal from the molecule and a
+written procedure; in condition generation, a model predicts the procedure from the target
+crystal. The CSD has a
 `solvent` field, but it holds a single string with no method, temperature or time, and it is empty
 for 84% of entries. We found no public dataset that links small-molecule crystallization
 procedures to CSD entries.
@@ -132,13 +137,14 @@ procedures to CSD entries.
    fields can be derived from the paragraphs later.
 5. **Show.** We built a website to browse the corpus and the records of the CSD Drug Subset.
 
-<br>
-
+<figure>
 <img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
-
-*Downloaded papers by publication year, with colors indicating journals. Acta Crystallographica
-Section E, a journal that publishes one structure per paper, supplies 41% of the corpus;
-since 2015, most papers come from general chemistry journals.*
+<figcaption>
+<strong>Figure 1.</strong> Downloaded papers by publication year, with colors indicating
+journals. Acta Crystallographica Section E, a journal that publishes one structure per paper,
+supplies 41% of the corpus; since 2015, most papers come from general chemistry journals.
+</figcaption>
+</figure>
 
 ### Results
 
@@ -158,13 +164,14 @@ since 2015, most papers come from general chemistry journals.*
   before answering), the model gave the same matches and core paragraphs as at `max` and ran
   about 10 times faster, so we use `high`.
 
-<br>
-
+<figure>
 <img src="docs/assets/downloads.png" width="700" alt="Paper licences and file availability">
-
-*Downloaded papers by licence in the PMC record (left, counts) and file availability (right,
-percentages). Most papers are under CC BY. "TDM" (text and data mining) marks author manuscripts,
-which PMC lets others reuse; they usually have no PDF.*
+<figcaption>
+<strong>Figure 2.</strong> Downloaded papers by licence in the PMC record (left, counts) and file
+availability (right, percentages). Most papers are under CC BY. "TDM" (text and data mining)
+marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
+</figcaption>
+</figure>
 
 ### Next steps
 
