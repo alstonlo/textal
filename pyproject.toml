@@ -73,7 +73,7 @@ ocr = ["ocr"]
 csd = ["csd"]
 
 [tool.pixi.tasks]
-web = "uvicorn viz.app:app --reload --port 8010"
+web = "uvicorn viz.app:app --reload"
 
 [tool.ruff]
 target-version = "py312"

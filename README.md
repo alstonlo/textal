@@ -95,10 +95,10 @@ pixi run python -m dataset.extraction_stream --run data/runs/corpus             
 The website shows corpus statistics and the 293 entries of the CSD Drug Subset that are reported
 in open-access papers of Acta Crystallographica Section E. Each entry's page shows a 3D view of
 its unit cell (the repeating unit of a crystal), its molecule, its CSD metadata, its paper and its
-extracted record. It runs at http://localhost:8010:
+extracted record. To serve it at http://localhost:8000:
 
 ```bash
-pixi run web
+pixi run web --port 8000
 ```
 
 The website reads only the tables in `src/viz/assets/`. Of these, only `stats.json` is in this

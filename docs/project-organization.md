@@ -8,8 +8,8 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
 - `src/viz/`: the Python package for the website that shows examples, and the figures for the
   report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes a
   figure as PNG).
-  - `app.py`: the website, a FastAPI app; run it with `pixi run web` and
-    open http://localhost:8010. It reads only `assets/`, never `data/`. The landing page shows the
+  - `app.py`: the website, a FastAPI app; run it with `pixi run web --port 8000` and open
+    http://localhost:8000. It reads only `assets/`, never `data/`. The landing page shows the
     statistics of the corpus; `/explore` lists the entries of the CSD
     drug subset in Acta Crystallographica Section E papers, each as its filled unit cell drawn
     flat by `crystal.py` (a small CIF parser that applies the symmetry operators), and
