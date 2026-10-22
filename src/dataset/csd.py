@@ -25,9 +25,9 @@ ACTA_E = "Acta Crystallogr E"
 
 
 def merge_acta_e(journal):
-    """Replaces both CSD names of Acta Crystallographica Section E with `ACTA_E`."""
+    """Replaces both CSD names of Acta Crystallographica Section E with `ACTA_E`, as `journal`."""
     is_acta_e = journal.str.starts_with("Acta Crystallogr.,Sect.E")
-    return pl.when(is_acta_e).then(pl.lit(ACTA_E)).otherwise(journal)
+    return pl.when(is_acta_e).then(pl.lit(ACTA_E)).otherwise(journal).alias("journal")
 
 
 def read_papers(path):

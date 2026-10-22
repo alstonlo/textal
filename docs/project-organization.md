@@ -1,29 +1,38 @@
 # Project organization
 
-An open dataset of crystallization procedures and outcomes, linked to crystal structures. For each structure in the CCDC, we download its metadata and the DOI of its paper, download the paper if it is open access, OCR it with [MinerU](https://github.com/opendatalab/mineru), and extract the crystallization procedure and outcome from the text. Each extracted record links back to its PDF.
+An open dataset of crystallization procedures and outcomes, linked to crystal structures. For
+each structure in the CSD, we download its metadata and the DOI of its paper, download the paper
+if it is open access in PubMed Central (PMC), convert it to Markdown, and extract the
+crystallization procedure and outcome from the text with a language model. Each extracted record
+quotes the paper. Acta Crystallographica Section E (Acta E), the journal with the most CSD
+entries, was also collected whole from the publisher's side (its open-access list and PMC
+packages, with the original CIFs and chemical schemes), which the website serves.
 
 ## Layout
 
 - `src/dataset/`: the Python package that builds the dataset: CCDC metadata, paper download, OCR and extraction.
-- `src/viz/`: the Python package for the website that shows examples, and the figures for the
-  report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes a
-  figure as PNG).
+- `src/viz/`: the Python package for the website that shows the records, and the figures for
+  the report (`theme.py`: the colours, fonts and sizes of every figure, and `save`, which writes
+  a figure as PNG). [`website.md`](website.md) describes the website and what it may show.
   - `app.py`: the website, a FastAPI app; run it with `pixi run web --port 8000` and open
-    http://localhost:8000. It reads only `assets/`, never `data/`. The landing page shows the
-    statistics of the corpus; `/explore` lists the entries of the CSD
-    drug subset in Acta Crystallographica Section E papers, each as its filled unit cell drawn
-    flat by `crystal.py` (a small CIF parser that applies the symmetry operators), and
-    `/entry/<refcode>` shows one entry: its crystal structure (the CIF, drawn by py3Dmol in
-    `crystal.py`), its molecule (drawn by RDKit), its CSD metadata, its paper and its extracted
-    record.
-  - `assets/` (untracked but for `stats.json`, as the entry tables hold CSD
-    data): the tables of the website,
-    written by `scripts/runs/viz/s0_assets.py`, so that the website needs neither the CSD
-    metadata nor the downloaded papers.
-    `entries.parquet` has one row per entry: its CIF, CSD metadata, DrugBank drugs, and its
-    paper's metadata and Markdown text (CC BY papers only). `extractions.parquet` has its
-    extracted record (in the schema of `dataset.extraction_schema`). `stats.json` has the corpus
-    statistics of the landing page.
+    http://localhost:8000. It reads only `assets/` and the two caches below, never `data/raw/`
+    or `data/papers/`. The landing page shows the statistics of the collection; `/explore` lists
+    the entries, each as the filled unit cell of its paper's publisher CIF drawn flat by
+    `crystal.py` (a small CIF parser that applies the symmetry operators); `/entry/<refcode>`
+    shows one entry: its crystal structures (the publisher CIFs, drawn by 3Dmol), its chemical
+    scheme, its paper's text and its extracted record, with each paragraph's quotes.
+    `publisher_assets.py` serves the CIFs and schemes from `data/publisher-cache/`,
+    `publisher_text.py` the paper texts from `data/publisher-texts/`, `publisher_data.py` loads
+    the tables and refuses any column it does not know, and `names.py` picks the compound name
+    shown as each entry's heading.
+  - `assets/` (untracked but for `stats.json`): the tables of the website, written by
+    `scripts/runs/viz/s2_assets.py`: `publisher_papers.parquet`, one row per paper (its PMCID,
+    DOI, title, journal, year, licence and, for Acta E, the paragraphs of its experimental
+    section); `publisher_entries.parquet`, one row per CSD refcode with the part of its record
+    that may be shown (the paragraphs that have a quote found in the paper's text; see
+    [`website.md`](website.md)); and `publisher_snapshot.json`, the counts and the time of the
+    build. `stats.json` has the corpus statistics of the landing page (counts only, so it can be
+    tracked).
   - `templates/` (Jinja) and `static/` (CSS and the page scripts): the pages of the website.
 - `scripts/`: the scripts, run from the repository root. [`Snakefile`](../scripts/Snakefile)
   names which script produces which file from which input, and runs them in order; see
@@ -34,7 +43,12 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
       licence and runs in its own pixi environment (`pixi run -e csd ...`).
     - `bib/`: the bibliography, i.e. the papers of the CSD entries: downloads the open-access
       papers from PubMed Central (PMC), with the PMCID of each DOI.
-    - `viz/`: writes the tables of the website to `src/viz/assets/`.
+    - `viz/`: the tables of the website. `s0_bibliography.py` fetches the title, journal, year
+      and licence of each paper from Europe PMC and Crossref; `s0_export_texts.py` reads the
+      paper texts out of the archive of PMC packages (it runs where that archive is) and
+      `s1_import_texts.py` loads them into `data/publisher-texts/`; `s2_assets.py` joins the
+      Acta E collection, the extracted records, the bibliography and the texts into the tables
+      of `src/viz/assets/`; `s0_audit_cifs.py` counts the papers with a publisher CIF.
   - `analysis/`: the scripts that only read the data: they print statistics (e.g., the numbers
     in [`csd-journal-stats.md`](csd-journal-stats.md)) or plot the figures of the README (to
     `docs/assets/`).
@@ -63,12 +77,25 @@ An open dataset of crystallization procedures and outcomes, linked to crystal st
     the scanned PDFs that have no text layer (`needs_ocr`) and errors (`SCHEMA` of
     `s1_parse.py`). `papers/download.jsonl` and `papers/parsed.jsonl` log each paper a stage
     finished, so a stopped run can resume.
-  - `viz/`: the inputs of the website's tables (`src/viz/assets/`), made by hand and taken as
-    given: `csd_drugs_with_paper.parquet`, the CSD entries of the drug subset (one row per refcode
-    and DrugBank ID) that have a downloaded paper, with their CCDC number, CIF and the DOI and
-    folder of the paper; and `priority-extractions.parquet`, the extracted records of those
-    entries whose paper is in Acta Crystallographica Section E (in the schema of
-    `dataset.extraction_schema`), which decides the entries the website shows.
+  - `runs/<name>/`: one folder per extraction run, written by `dataset.extraction_stream`
+    ([`EXTRACTION_RUNS.md`](EXTRACTION_RUNS.md) lists the runs and what each folder holds).
+  - `extractions.parquet`: a snapshot of the extracted records of all runs, one row per CSD entry
+    (in the schema of `dataset.extraction_schema`; [`EXTRACTION_SCHEMA.md`](EXTRACTION_SCHEMA.md)
+    explains the columns). The analysis scripts, the example figure and the website's tables are
+    built from it.
+  - `viz/`: the inputs of the website's tables, made elsewhere and taken as given.
+    `acta-e-papers.jsonl.gz` is the Acta E collection: one line per open-access Acta E paper in
+    PMC, with its PMCID, DOI, title, year, licence, the paragraphs of its experimental sections
+    and the CSD refcodes linked to it. `publisher-targets.json` lists the papers of the other
+    journals (DOI and PMCID), `publisher-bibliography.json` their title, journal, year and
+    licence (written by `s0_bibliography.py`), and `publisher-texts.jsonl.gz` the Markdown of
+    their text and supplementary documents (written by `s0_export_texts.py`).
+    `csd_drugs_with_paper.parquet` is the CSD drug subset (one row per refcode and DrugBank ID)
+    with each entry's CCDC number, CIF and paper; the README's example record is drawn from it.
+  - `publisher-texts/`: the paper texts of the website, one gzipped JSON per DOI, written by
+    `s1_import_texts.py`.
+  - `publisher-cache/`: the publisher CIFs and chemical schemes that the website has served,
+    copied from the archive of PMC packages the first time a page asks for them.
 - `docs/`: the documents for people, listed in [`README.md`](README.md).
 - `sandbox/` (untracked): dated scratch folders.
 
