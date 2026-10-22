@@ -1,3 +1,4 @@
+var ROOT = document.querySelector('meta[name="root"]').content;
 "use strict";
 const media = document.getElementById("publisher-media");
 if (media)
@@ -53,7 +54,7 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
   }
   try {
     const response = await fetch(
-      "/api/paper-text?doi=" + encodeURIComponent(pane.dataset.doi),
+      ROOT + "/api/paper-text?doi=" + encodeURIComponent(pane.dataset.doi),
     );
     if (!response.ok) throw Error("Text unavailable");
     const data = await response.json();

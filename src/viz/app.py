@@ -124,7 +124,7 @@ def load_stats(entries):
         }
         items = list(counts)
         labels = [
-            "<br>".join(textwrap.wrap(aliases.get(name, name) if journal_chart else name, 24))
+            "<br>".join(textwrap.wrap(aliases.get(name, name) if journal_chart else name, 16))
             for name, _ in items
         ]
         primary = [
@@ -220,6 +220,8 @@ templates = Jinja2Templates(directory=HERE / "templates")
 
 # The path the site is served under; a static export for alstonlo.github.io/textal sets "/textal".
 templates.env.globals["root"] = ""
+templates.env.globals["static_site"] = False
+PAGE_SIZE = 48
 
 
 def extraction_date(value):
@@ -272,7 +274,7 @@ def explore(
     if sort == "year":
         found.sort(key=lambda e: (e["paper"]["year"] or 0, e["id"]), reverse=True)
     total = len(found)
-    pages = max(1, math.ceil(total / 48))
+    pages = max(1, math.ceil(total / PAGE_SIZE))
     page = max(1, min(page, pages))
 
     def link(n):
@@ -284,7 +286,7 @@ def explore(
         request,
         "explore.html",
         {
-            "entries": found[(page - 1) * 48 : page * 48],
+            "entries": found[(page - 1) * PAGE_SIZE : page * PAGE_SIZE],
             "total": total,
             "page": page,
             "pages": pages,

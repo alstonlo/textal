@@ -1,3 +1,4 @@
+var ROOT = document.querySelector('meta[name="root"]').content;
 /* Local journal assets. Crystal rendering runs in an isolated document per selected paper. */
 "use strict";
 window.PaperMedia = (() => {
@@ -45,7 +46,7 @@ window.PaperMedia = (() => {
       let data = cache.get(paper.pmcid);
       if (!data) {
         const response = await fetch(
-          "/api/paper-assets/" + encodeURIComponent(paper.pmcid),
+          ROOT + "/api/paper-assets/" + encodeURIComponent(paper.pmcid),
           { signal: abort.signal },
         );
         data = await response.json();
@@ -95,7 +96,7 @@ window.PaperMedia = (() => {
           file: f.cache_name,
         });
       state.frame.style.height = "640px";
-      state.frame.src = "/crystal-frame.html?" + query;
+      state.frame.src = ROOT + "/crystal-frame.html?" + query;
       selections.set(state.paper.pmcid, i);
       host.querySelector(".crystal-downloads").innerHTML =
         `<a class="button" href="${esc(f.local_url)}" download="${esc(f.name)}">↓ Original publisher CIF</a><span>${(f.bytes / 1000).toFixed(1)} kB</span>`;

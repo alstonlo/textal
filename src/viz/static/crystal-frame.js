@@ -1,3 +1,4 @@
+var ROOT = document.querySelector('meta[name="root"]').content;
 /* Each iframe owns its 3Dmol instance, canvas and observers; removal destroys them together. */
 "use strict";
 (() => {
@@ -121,7 +122,7 @@
   (async () => {
     try {
       const response = await fetch(
-        "/api/cif-models/" +
+        ROOT + "/api/cif-models/" +
           encodeURIComponent(q.get("pmcid")) +
           "/" +
           encodeURIComponent(q.get("file")),
