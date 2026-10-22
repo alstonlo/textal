@@ -8,6 +8,10 @@ run directory; papers already in the log are skipped, so a stopped run resumes. 
 start appends to `manifest.jsonl` what produced the run: command, git commit and diff,
 prompt version, model, effort and the papers sent, with the system prompt in `system.txt`.
 
+The login node kills a process after 90 min of CPU time. After `--cpu-budget` seconds the
+runner stops starting papers, lets those in flight finish and exits with status 3;
+`scripts/run_extraction.sh` restarts it until every paper is done.
+
 Usage:
     uv run python -m dataset.extraction_stream [--sample N] [--seed S] [--concurrency C]
         [--model M] [--effort E] [--run DIR]
@@ -26,6 +30,7 @@ import hashlib
 import json
 import random
 import re
+import resource
 import subprocess
 import sys
 import time
@@ -58,6 +63,9 @@ CORPUS = ROOT / "papers"
 PARSED = CORPUS / "parsed"
 
 FRONT_MATTER = re.compile(r"\A---\n(.*?)\n---\n", re.DOTALL)
+
+# Exit status meaning "stopped early, papers left": the wrapper restarts the runner.
+MORE_TO_DO = 3
 
 # Seconds every request waits after a 429; the model's output-token quota refills
 # within about a minute.
@@ -190,21 +198,43 @@ async def call_once(client: AsyncOpenAI, job: dict, model: str, effort: str) -> 
         raise
     except APIError as e:
         return failed(str(e))
+    except Exception as e:  # e.g. a stream cut before `response.completed`
+        return failed(f"{type(e).__name__}: {e}")
     return parse_response(response)
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    """The file's records, skipping a last line cut off when a process was killed."""
+    if not path.exists():
+        return []
+    records = []
+    for line in path.read_text().splitlines():
+        try:
+            records.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return records
 
 
 def done(run: Path) -> set[str]:
     """Papers already run to an answer; `failed` ones are tried again."""
-    log = run / "log.jsonl"
-    if not log.exists():
-        return set()
-    lines = [json.loads(line) for line in log.read_text().splitlines() if line]
-    return {line["dir"] for line in lines if line["status"] != "failed"}
+    return {r["dir"] for r in read_jsonl(run / "log.jsonl") if r["status"] != "failed"}
+
+
+def cpu_seconds() -> float:
+    usage = resource.getrusage(resource.RUSAGE_SELF)
+    return usage.ru_utime + usage.ru_stime
 
 
 async def stream(
-    papers: pl.DataFrame, run: Path, model: str, effort: str, concurrency: int
-) -> None:
+    papers: pl.DataFrame,
+    run: Path,
+    model: str,
+    effort: str,
+    concurrency: int,
+    cpu_budget: float,
+) -> bool:
+    """Run the papers; return False if the CPU budget ran out before all were started."""
     client = AsyncOpenAI(
         base_url=os.environ.get("LITELLM_BASE_URL", DEFAULT_BASE_URL),
         api_key=os.environ["LITELLM_API_KEY"],
@@ -219,10 +249,14 @@ async def stream(
     log_file = (run / "log.jsonl").open("a")
     start = time.monotonic()
     n_done = 0
+    stopping = False
 
     async def one(paper: dict) -> None:
-        nonlocal n_done
+        nonlocal n_done, stopping
         async with gate:
+            if stopping or cpu_seconds() > cpu_budget:
+                stopping = True
+                return
             mine = entries.filter(pl.col("identifier").is_in(paper["refcodes"])).sort("identifier")
             job = build(paper, mine)
             t0 = time.monotonic()
@@ -265,16 +299,23 @@ async def stream(
     await asyncio.gather(*(one(p) for p in papers.iter_rows(named=True)))
     rows_file.close()
     log_file.close()
-    print(f"{n_done} papers in {time.monotonic() - start:.0f}s")
+    print(
+        f"{n_done} papers in {time.monotonic() - start:.0f}s, {cpu_seconds():.0f}s CPU"
+        + (", CPU budget reached" if stopping else ""),
+        flush=True,
+    )
+    return not stopping
 
 
 def to_parquet(run: Path) -> pl.DataFrame:
     """The run's rows in the extraction schema, the latest attempt for each entry."""
-    rows = [json.loads(line) for line in (run / "rows.jsonl").read_text().splitlines() if line]
-    for r in rows:
-        r["extracted_at"] = datetime.fromisoformat(r["extracted_at"])
+    rows = run / "rows.jsonl"
+    # Drop a last line cut off by a killed process; polars rejects partial JSON.
+    text = rows.read_text()
+    if text and not text.endswith("\n"):
+        rows.write_text(text[: text.rfind("\n") + 1])
     df = (
-        pl.DataFrame(rows, schema=SCHEMA)
+        pl.read_ndjson(rows, schema=SCHEMA)
         .sort("extracted_at")
         .unique(subset=["identifier", "doi"], keep="last", maintain_order=True)
     )
@@ -319,16 +360,38 @@ def main() -> None:
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--effort", default="high", help="Reasoning effort")
     parser.add_argument("--run", type=Path, default=ROOT / "data" / "runs" / "corpus")
+    parser.add_argument(
+        "--cpu-budget",
+        type=float,
+        default=3000,
+        help="CPU seconds before stopping for a restart (the node's soft limit is 3600)",
+    )
+    parser.add_argument(
+        "--skip-journal",
+        action="append",
+        default=[],
+        help="Skip papers whose journal contains this text (repeatable), e.g. 'Sect.E:'",
+    )
     args = parser.parse_args()
 
     papers = corpus()
+    if args.skip_journal:
+        journals = pl.read_parquet(CORPUS / "metadata.parquet", columns=["dir", "journal"])
+        skipped = journals.filter(
+            pl.any_horizontal(pl.col("journal").str.contains(j, literal=True) for j in args.skip_journal)
+        )["dir"]
+        papers = papers.filter(~pl.col("dir").is_in(skipped.implode()))
     if args.sample:
         papers = papers.sample(args.sample, seed=args.seed)
     papers = papers.filter(~pl.col("dir").is_in(list(done(args.run))))
     args.run.mkdir(parents=True, exist_ok=True)
     record(args.run, args, papers)
-    print(f"{papers.height} papers to run -> {args.run}")
-    asyncio.run(stream(papers, args.run, args.model, args.effort, args.concurrency))
+    print(f"{papers.height} papers to run -> {args.run}", flush=True)
+    finished = asyncio.run(
+        stream(papers, args.run, args.model, args.effort, args.concurrency, args.cpu_budget)
+    )
+    if not finished:
+        sys.exit(MORE_TO_DO)
     df = to_parquet(args.run)
     print(f"{df.height} rows -> {args.run / 'extractions.parquet'}")
 
