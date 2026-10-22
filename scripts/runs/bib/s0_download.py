@@ -205,7 +205,7 @@ def main(
     resume: bool = True,
     list_only: bool = False,
 ):
-    """Downloads every CSD paper in the PMC open-access bucket to `<out>/<DOI>/raw/`.
+    """Downloads every CSD paper in the PMC open-access bucket to `<out>/raw/<DOI>/`.
 
     First downloads, to `data/raw/pmc/` and only if they are not there yet, the PMCID of every DOI
     in PMC (`PMC-ids.csv.gz`) and the listing of each CSD paper in the bucket (`s3.jsonl`, which
@@ -286,7 +286,7 @@ def main(
     if log.exists():
         with open(log) as f:
             done = {d["doi"]: d for d in map(json.loads, f)}
-    ok = {r["doi"] for r in rows if r["dir"] and (out / r["dir"]).exists()}
+    ok = {r["doi"] for r in rows if r["dir"] and (out / "raw" / r["dir"]).exists()}
     ok &= {doi for doi, d in done.items() if not d["error"]}
 
     todo = [r for r in rows if r["dir"] and (r["doi"] not in ok)]
@@ -296,7 +296,7 @@ def main(
             ex.submit(
                 download,
                 rec=recs[r["pmcid"]],
-                raw=out / r["dir"] / "raw",
+                raw=out / "raw" / r["dir"],
                 disk=out,
                 max_bytes=max_mb * 2**20,
                 min_free=min_free_gb * 2**30,
