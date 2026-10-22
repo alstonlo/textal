@@ -102,13 +102,11 @@ def parse_structure(cif: str) -> tuple[list[str], np.ndarray, np.ndarray]:
     frac_all = np.concatenate(images) % 1.0
     elems_all = elems * len(ops)
 
-    # Symmetry operators map atoms on special positions onto themselves: keep one copy.
+    # Symmetry operators map atoms on special positions onto themselves: keep the first copy.
     cart = frac_all @ lattice
-    keep = []
-    for i in range(len(cart)):
-        if all(np.linalg.norm(cart[i] - cart[j]) > 0.1 for j in keep[-200:]):
-            keep.append(i)
-    elems_all = [elems_all[i] for i in keep]
+    dist = np.linalg.norm(cart[:, None] - cart[None], axis=-1)
+    keep = ~np.triu(dist < 0.1, k=1).any(axis=0)
+    elems_all = [e for e, k in zip(elems_all, keep, strict=True) if k]
     return elems_all, whole_molecules(elems_all, frac_all[keep], lattice), lattice
 
 
