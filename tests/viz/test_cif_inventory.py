@@ -7,7 +7,7 @@ import zipfile
 from pathlib import Path
 
 SPEC = importlib.util.spec_from_file_location(
-    "audit", Path(__file__).resolve().parents[2] / "scripts/runs/viz/audit_publisher_cifs.py"
+    "audit", Path(__file__).resolve().parents[2] / "scripts/runs/viz/s0_audit_cifs.py"
 )
 audit = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(audit)

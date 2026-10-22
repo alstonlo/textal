@@ -19,6 +19,16 @@ DOAJ_FALSE_MATCHES = ["Synthesis", "Matter"]
 # The NLM title abbreviation of a paper's journal, as in https://www.ncbi.nlm.nih.gov/nlmcatalog/.
 NLM_TA = re.compile(r'<journal-id journal-id-type="nlm-ta">([^<]+)<')
 
+# Acta Crystallographica Section E was renamed in 2014 (Structure Reports Online, then
+# Crystallographic Communications), so the CSD lists it under two names.
+ACTA_E = "Acta Crystallogr E"
+
+
+def merge_acta_e(journal):
+    """Replaces both CSD names of Acta Crystallographica Section E with `ACTA_E`."""
+    is_acta_e = journal.str.starts_with("Acta Crystallogr.,Sect.E")
+    return pl.when(is_acta_e).then(pl.lit(ACTA_E)).otherwise(journal)
+
 
 def read_papers(path):
     """Reads the paper of each CSD entry from the full CSD metadata.

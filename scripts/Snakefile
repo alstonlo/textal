@@ -1,8 +1,10 @@
 # The chain from the CSD metadata to the figures of the README: the metadata of every CSD entry,
 # exported with the CSD Python API (which needs a CCDC licence, see the README), then the
 # open-access papers of the CSD entries, downloaded from PubMed Central (PMC), then parsed to
-# Markdown, then plotted. The tables of the website (`assets`) are not part of `all`, since their
-# inputs in `data/viz/` are made by hand.
+# Markdown, then plotted. The extraction (`data/extractions.parquet`) and the Acta E collection
+# (`data/viz/`) are made elsewhere and taken as given (see `docs/project-organization.md`), so
+# the figures that need them (`plot_extraction`, `example`) and the tables of the website
+# (`assets`) are not part of `all`.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -17,7 +19,9 @@
 #     pixi run snakemake -s scripts/Snakefile -j1 all     # the figures, and the data they need
 
 PAPERS = "data/papers"
+ASSETS = "src/viz/assets"
 PLOTS = ["years", "downloads"]
+EXTRACTION_PLOTS = ["extraction", "records"]
 
 
 rule all:
@@ -56,22 +60,70 @@ rule plot_papers:
     input:
         f"{PAPERS}/metadata.parquet",
         f"{PAPERS}/parsed.parquet",
+        f"{ASSETS}/publisher_papers.parquet",
     output:
         expand("docs/assets/{plot}.png", plot=PLOTS),
     shell:
         "python scripts/analysis/s0_paper_plots.py"
 
 
-rule assets:
+rule plot_extraction:
     input:
+        "data/extractions.parquet",
+        f"{PAPERS}/metadata.parquet",
+        "data/raw/csd_metadata.full.parquet",
+    output:
+        expand("docs/assets/{plot}.png", plot=EXTRACTION_PLOTS),
+    shell:
+        "python scripts/analysis/s0_extraction_plots.py"
+
+
+# The example record of the README; it needs Chrome, so it is not part of `all`.
+rule example:
+    input:
+        "data/extractions.parquet",
+        "data/viz/csd_drugs_with_paper.parquet",
         "data/raw/csd_metadata.full.parquet",
         f"{PAPERS}/metadata.parquet",
-        f"{PAPERS}/parsed.parquet",
-        "data/viz/csd_drugs_with_paper.parquet",
-        "data/viz/priority-extractions.parquet",
     output:
-        "src/viz/assets/entries.parquet",
-        "src/viz/assets/extractions.parquet",
-        "src/viz/assets/stats.json",
+        "docs/assets/example.png",
     shell:
-        "python scripts/runs/viz/s0_assets.py"
+        "python scripts/analysis/s0_example_figure.py"
+
+
+# The tables of the website. The bibliography is fetched from Europe PMC and Crossref for the
+# papers listed in `publisher-targets.json`; the publisher texts are exported on the machine
+# that holds the paper archive (`s0_export_texts.py`) and imported here.
+rule bibliography:
+    input:
+        "data/viz/publisher-targets.json",
+    output:
+        "data/viz/publisher-bibliography.json",
+    shell:
+        "python scripts/runs/viz/s0_bibliography.py --targets {input} --output {output}"
+
+
+rule texts:
+    input:
+        "data/viz/publisher-texts.jsonl.gz",
+    output:
+        directory("data/publisher-texts"),
+    shell:
+        "python scripts/runs/viz/s1_import_texts.py --input {input} --output {output}"
+
+
+rule assets:
+    input:
+        sections="data/viz/acta-e-papers.jsonl.gz",
+        extractions="data/extractions.parquet",
+        bibliography="data/viz/publisher-bibliography.json",
+        linkage="data/viz/publisher-targets.json",
+        texts="data/publisher-texts",
+    output:
+        f"{ASSETS}/publisher_entries.parquet",
+        f"{ASSETS}/publisher_papers.parquet",
+        f"{ASSETS}/publisher_snapshot.json",
+    shell:
+        "python scripts/runs/viz/s2_assets.py --sections {input.sections}"
+        " --extractions {input.extractions} --bibliography {input.bibliography}"
+        " --linkage {input.linkage} --texts {input.texts} --output {ASSETS}"

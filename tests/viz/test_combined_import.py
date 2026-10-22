@@ -12,7 +12,7 @@ import polars as pl
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
-    "combined_builder", ROOT / "scripts/runs/viz/build_publisher_assets.py"
+    "combined_builder", ROOT / "scripts/runs/viz/s2_assets.py"
 )
 builder = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(builder)

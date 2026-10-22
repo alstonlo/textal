@@ -6,7 +6,7 @@ import numpy as np
 import polars as pl
 from jsonargparse import auto_cli
 
-from dataset.csd import nlm_abbrevs
+from dataset.csd import ACTA_E, merge_acta_e, nlm_abbrevs
 from dataset.paths import DATA_DIR, REPO_ROOT
 from viz import theme
 
@@ -68,9 +68,12 @@ def main(
     print(ext.group_by("prompt_version", "extraction_status").len().sort(pl.all()))
 
     # Papers of the largest journals: extracted versus not yet extracted.
-    journals = done.group_by("journal").agg(pl.len().alias("papers"), pl.col("run").sum())
+    journals = done.group_by(journal=merge_acta_e(pl.col("journal"))).agg(
+        pl.len().alias("papers"), pl.col("run").sum()
+    )
     journals = journals.sort("papers", "journal", descending=True).head(top)
-    abbrevs = nlm_abbrevs(meta, journals["journal"].to_list(), papers / "raw")
+    named = [j for j in journals["journal"] if j != ACTA_E]
+    abbrevs = nlm_abbrevs(meta, named, papers / "raw") | {ACTA_E: ACTA_E}
     labels = ["\n".join(textwrap.wrap(abbrevs[j], 22)) for j in journals["journal"]][::-1]
     total, extracted = journals["papers"].to_numpy()[::-1], journals["run"].to_numpy()[::-1]
     fig, ax = plt.subplots(figsize=(theme.WIDTH, 3.1), layout="constrained")

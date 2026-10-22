@@ -5,7 +5,7 @@ import numpy as np
 import polars as pl
 from jsonargparse import auto_cli
 
-from dataset.csd import nlm_abbrevs
+from dataset.csd import ACTA_E, merge_acta_e, nlm_abbrevs
 from dataset.paths import DATA_DIR, REPO_ROOT
 from viz import theme
 
@@ -14,6 +14,7 @@ PLOTS = ["years", "downloads"]
 
 def main(
     papers: str = str(DATA_DIR / "papers"),
+    acta_e: str = str(REPO_ROOT / "src" / "viz" / "assets" / "publisher_papers.parquet"),
     out: str = str(REPO_ROOT / "docs" / "assets"),
     first_year: int = 2000,
 ):
@@ -21,6 +22,12 @@ def main(
 
     Writes `<out>/<plot>.png` for each plot in `PLOTS`: the papers per year since `first_year`
     stacked by journal, and the licences and files of the downloaded papers.
+
+    Args:
+        papers: The papers folder, with `metadata.parquet`, `parsed.parquet` and `raw/`.
+        acta_e: The papers table of the Acta E collection (one row per paper).
+        out: The folder to write the figures to.
+        first_year: The first year of the papers-per-year figure.
     """
     papers, out = pathlib.Path(papers), pathlib.Path(out)
     out.mkdir(parents=True, exist_ok=True)
@@ -29,12 +36,18 @@ def main(
     theme.apply()
 
     # Papers per year, stacked by the five largest journals. Years before `first_year` have a
-    # handful of papers each, so they are left out.
-    journals = meta.group_by("journal").len("papers").sort("papers", "journal", descending=True)
-    top5 = journals.head(5)["journal"].to_list()
-    abbrevs = nlm_abbrevs(meta, top5, papers / "raw")
+    # handful of papers each, so they are left out. The Acta E collection adds the few Acta E
+    # papers whose DOI the CSD does not record, so they are not in `metadata.parquet`.
+    extra = pl.read_parquet(acta_e, columns=["doi", "year"])
+    extra = extra.filter(~pl.col("doi").is_in(meta["doi"].implode()))
+    all_papers = pl.concat(
+        [meta.select("journal", "year"), extra.select(journal=pl.lit(ACTA_E), year="year")]
+    ).with_columns(merge_acta_e(pl.col("journal")))
+    journals = all_papers.group_by("journal").len("papers")
+    top5 = journals.sort("papers", "journal", descending=True).head(5)["journal"].to_list()
+    abbrevs = nlm_abbrevs(meta, [j for j in top5 if j != ACTA_E], papers / "raw")
     group = pl.when(pl.col("journal").is_in(top5)).then("journal").otherwise(pl.lit("Other"))
-    by_year = meta.filter(pl.col("year") >= first_year).group_by("year", group=group).len()
+    by_year = all_papers.filter(pl.col("year") >= first_year).group_by("year", group=group).len()
     by_year = by_year.pivot("group", index="year", values="len").fill_null(0).sort("year")
     years = by_year["year"].to_numpy()
     fig, ax = plt.subplots(figsize=(theme.WIDTH, 2.4), layout="constrained")
