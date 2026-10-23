@@ -128,5 +128,7 @@ rule release:
         f"{DATA}/papers.parquet",
     output:
         f"{DATA}/README.md",
+        f"{DATA}/files.tar",
+        f"{DATA}/texts.tar",
     shell:
         "python scripts/runs/viz/s3_release.py --cache data/publisher-cache --output {DATA}"

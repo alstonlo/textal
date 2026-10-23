@@ -5,9 +5,11 @@ becomes one tar of `data/publisher-cache/` (its manifest and the publisher's CIF
 schemes, as supplied) at the path `viz.publisher_data.package_name` gives, so the folder is the
 public dataset as uploaded to Hugging Face (`dataset-card.md` is its README), and what the website
 reads. The generated thumbnails are left out. Papers already packed are skipped, and the packages
-of papers no longer released are removed. Upload the folder with
-`hf upload alstonlo/textal-data data/textal . --repo-type dataset --delete "*"`, which also
-deletes the remote files that are no longer in it.
+of papers no longer released are removed. The folders `files/` and `texts/` (tens of thousands of
+small files) are then bundled into `files.tar` and `texts.tar`, which are uploaded in their place:
+`hf upload alstonlo/textal-data data/textal . --repo-type dataset --exclude "files/*"
+--exclude "texts/*" --delete "*"`, which also deletes the remote files that are no longer in it.
+The bundles are not gzipped, since the files in them already are.
 """
 
 import argparse
@@ -69,6 +71,14 @@ def main():
         for n in pool.map(pack, jobs.keys(), jobs.values(), chunksize=64):
             counts["papers"] += 1
             counts["files"] += n
+
+    for name in ("files", "texts"):
+        target = a.output / (name + ".tar")
+        temp = target.with_name(target.name + ".part")
+        with tarfile.open(temp, mode="w") as tar:
+            for path in sorted((a.output / name).glob("*/*.gz")):
+                tar.add(path, arcname=path.relative_to(a.output).as_posix())
+        temp.replace(target)
     print(json.dumps(counts))
 
 
