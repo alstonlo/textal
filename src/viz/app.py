@@ -2,7 +2,6 @@
 
 import json
 import math
-import os
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -16,12 +15,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from viz import publisher_assets, publisher_text
-from viz.publisher_data import load_public_data
+from viz.publisher_data import DATA, load_public_data
 
 HERE = Path(__file__).parent
-ASSETS = Path(os.environ.get("TEXTAL_ASSETS", str(HERE / "assets")))
 INK, MUTED, GRID = "#111111", "#6B6B68", "#E5E5E3"
-ENTRIES, PAPERS, SNAPSHOT = load_public_data(ASSETS)
+ENTRIES, PAPERS, SNAPSHOT = load_public_data()
 BY_ID = {e["id"]: e for e in ENTRIES}
 POSITIONS = {e["id"]: i for i, e in enumerate(ENTRIES)}
 SEARCH = {
@@ -195,19 +193,19 @@ def load_stats(entries):
 
 
 STATS = load_stats(ENTRIES)
-SNAPSHOT_MTIME = (ASSETS / "publisher_snapshot.json").stat().st_mtime_ns
+SNAPSHOT_MTIME = (DATA / "snapshot.json").stat().st_mtime_ns
 RELOAD_LOCK = threading.Lock()
 
 
 def refresh_snapshot():
     global ENTRIES, PAPERS, SNAPSHOT, BY_ID, POSITIONS, SEARCH, SNAPSHOT_MTIME, STATS
-    stamp = (ASSETS / "publisher_snapshot.json").stat().st_mtime_ns
+    stamp = (DATA / "snapshot.json").stat().st_mtime_ns
     if stamp == SNAPSHOT_MTIME:
         return
     with RELOAD_LOCK:
         if stamp == SNAPSHOT_MTIME:
             return
-        entries, papers, snapshot = load_public_data(ASSETS)
+        entries, papers, snapshot = load_public_data()
         ENTRIES, PAPERS, SNAPSHOT = entries, papers, snapshot
         BY_ID = {e["id"]: e for e in entries}
         POSITIONS = {e["id"]: i for i, e in enumerate(entries)}

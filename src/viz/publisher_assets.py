@@ -1,7 +1,8 @@
 """Verified publisher-only media from saved PMC packages.
 
-The cache is private. Only manifest-allowlisted CIFs and chemical schemes have public
-routes; package paths, receipts, XML and CSD files are never served by this module.
+A paper's package (see `package`) is unpacked into the cache the first time a page asks for it.
+Only manifest-allowlisted CIFs and chemical schemes have public routes; package paths, receipts,
+XML and CSD files are never served by this module.
 """
 
 import base64
@@ -19,6 +20,8 @@ from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 import gemmi
+
+from viz.publisher_data import DATA, package_name
 
 CACHE = Path(os.environ.get("TEXTAL_PUBLISHER_CACHE", "data/publisher-cache")).resolve()
 EXPORTER = Path(__file__).with_name("export_publisher_assets.py")
@@ -94,37 +97,7 @@ def assets(pmcid):
                 for f in data[kind]
             ):
                 return data
-        if os.environ.get("TEXTAL_ASSET_SSH", "0") != "1":
-            raise RuntimeError(
-                "Publisher files are not cached here yet. Configure the publisher archive connection to load them."
-            )
-        encoded = base64.b64encode(EXPORTER.read_bytes()).decode()
-        remote = (
-            "python3 -c "
-            + shlex.quote("import base64;exec(base64.b64decode(" + repr(encoded) + "))")
-            + " "
-            + shlex.quote(pmcid)
-        )
-        command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12"]
-        if os.environ.get("TEXTAL_SSH_CONTROL"):
-            command += ["-o", "ControlPath=" + os.environ["TEXTAL_SSH_CONTROL"]]
-        command += [
-            os.environ["TEXTAL_ARCHIVE_SSH"],
-            "ssh -o BatchMode=yes "
-            + shlex.quote(os.environ.get("TEXTAL_ARCHIVE_NODE", "tri-dm2"))
-            + " "
-            + shlex.quote(remote),
-        ]
-        try:
-            with FETCH_LIMIT:
-                result = subprocess.run(command, capture_output=True, timeout=100, check=False)
-        except subprocess.TimeoutExpired:
-            raise RuntimeError("Publisher archive read timed out; retry the paper.") from None
-        if result.returncode:
-            raise RuntimeError(
-                "The publisher archive connection is unavailable; cached papers remain available."
-            )
-        with tarfile.open(fileobj=io.BytesIO(result.stdout)) as tar:
+        with tarfile.open(fileobj=io.BytesIO(package(pmcid))) as tar:
             data = validate_manifest(json.load(tar.extractfile("manifest.json")), pmcid)
             folder.mkdir(parents=True, exist_ok=True)
             for kind in ("cifs", "figures"):
@@ -140,6 +113,46 @@ def assets(pmcid):
             temp.write_text(json.dumps(data))
             temp.replace(manifest)
         return data
+
+
+def package(pmcid):
+    """The bytes of the paper's package: a tar of its manifest and publisher files.
+
+    It is read from the dataset folder or, on the machine that builds the dataset, exported from
+    the archive of PMC packages over SSH.
+    """
+    path = DATA / package_name(pmcid)
+    if path.is_file():
+        return path.read_bytes()
+    if os.environ.get("TEXTAL_ASSET_SSH", "0") != "1":
+        raise RuntimeError("The publisher files of this paper are not in the dataset.")
+    encoded = base64.b64encode(EXPORTER.read_bytes()).decode()
+    remote = (
+        "python3 -c "
+        + shlex.quote("import base64;exec(base64.b64decode(" + repr(encoded) + "))")
+        + " "
+        + shlex.quote(pmcid)
+    )
+    command = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=12"]
+    if os.environ.get("TEXTAL_SSH_CONTROL"):
+        command += ["-o", "ControlPath=" + os.environ["TEXTAL_SSH_CONTROL"]]
+    command += [
+        os.environ["TEXTAL_ARCHIVE_SSH"],
+        "ssh -o BatchMode=yes "
+        + shlex.quote(os.environ.get("TEXTAL_ARCHIVE_NODE", "tri-dm2"))
+        + " "
+        + shlex.quote(remote),
+    ]
+    try:
+        with FETCH_LIMIT:
+            result = subprocess.run(command, capture_output=True, timeout=100, check=False)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("Publisher archive read timed out; retry the paper.") from None
+    if result.returncode:
+        raise RuntimeError(
+            "The publisher archive connection is unavailable; cached papers remain available."
+        )
+    return result.stdout
 
 
 def public_manifest(pmcid):

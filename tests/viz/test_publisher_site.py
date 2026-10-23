@@ -5,7 +5,6 @@ import hashlib
 import importlib.util
 import json
 import os
-import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -14,9 +13,7 @@ import polars as pl
 from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location(
-    "builder", ROOT / "scripts/runs/viz/s2_assets.py"
-)
+spec = importlib.util.spec_from_file_location("builder", ROOT / "scripts/runs/viz/s2_assets.py")
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
 
@@ -51,7 +48,6 @@ class PublisherSiteTests(unittest.TestCase):
         cls.folder = Path(cls.temp.name)
         cls.output = cls.folder / "assets"
         cls.output.mkdir()
-        shutil.copy(ROOT / "src/viz/assets/stats.json", cls.output / "stats.json")
         sections = cls.folder / "sections.jsonl.gz"
         source = {
             "pmcid": "PMC1234",
@@ -105,7 +101,7 @@ class PublisherSiteTests(unittest.TestCase):
         pl.DataFrame([extraction]).write_parquet(ext)
         builder.build(sections, ext, cls.output)
         pl.DataFrame({"cif": [SECRET], "chemical_name": [SECRET]}).write_parquet(
-            cls.output / "entries.parquet"
+            cls.output / "csd_entries.parquet"
         )
         cls.cache = cls.folder / "cache"
         paper = cls.cache / "PMC1234"
@@ -139,7 +135,7 @@ class PublisherSiteTests(unittest.TestCase):
         }
         (paper / "manifest.json").write_text(json.dumps(manifest))
         os.environ.update(
-            TEXTAL_ASSETS=str(cls.output),
+            TEXTAL_DATA=str(cls.output),
             TEXTAL_PUBLISHER_CACHE=str(cls.cache),
             TEXTAL_ASSET_SSH="0",
         )
@@ -162,7 +158,7 @@ class PublisherSiteTests(unittest.TestCase):
     def test_private_fields_never_render_or_export(self):
         from viz.publisher_data import load_public_data
 
-        data = load_public_data(self.output)
+        data = load_public_data()
         text = json.dumps(data)
         for url in (
             "/",
@@ -232,15 +228,15 @@ class PublisherSiteTests(unittest.TestCase):
     def test_public_schema_fails_closed_on_extra_columns(self):
         from viz.publisher_data import load_public_data
 
-        table = pl.read_parquet(self.output / "publisher_entries.parquet")
+        table = pl.read_parquet(self.output / "entries.parquet")
         try:
             table.with_columns(pl.lit(SECRET).alias("cif")).write_parquet(
-                self.output / "publisher_entries.parquet"
+                self.output / "entries.parquet"
             )
             with self.assertRaises(ValueError):
-                load_public_data(self.output)
+                load_public_data()
         finally:
-            table.write_parquet(self.output / "publisher_entries.parquet")
+            table.write_parquet(self.output / "entries.parquet")
 
     def test_gemmi_handles_quoted_labels_and_multiple_blocks(self):
         result = self.client.get("/api/cif-models/PMC1234/0-publisher.cif")
@@ -276,7 +272,7 @@ class PublisherSiteTests(unittest.TestCase):
             path.write_bytes(self.raw)
 
     def test_completed_snapshot_reloads_without_restarting(self):
-        path = self.output / "publisher_snapshot.json"
+        path = self.output / "snapshot.json"
         original = path.read_text()
         value = json.loads(original)
         value["built_at"] = "2026-10-22T23:00:00+00:00"

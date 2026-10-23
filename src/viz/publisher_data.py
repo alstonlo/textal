@@ -1,11 +1,16 @@
-"""Fail-closed public dataset loader. Legacy CSD entries.parquet is never opened."""
+"""The dataset folder: the website's tables and the publisher files, in the layout of the
+Hugging Face dataset, so that a downloaded copy of the dataset is exactly what the website reads.
+Any table with a column this module does not know is refused."""
 
 import json
+import os
 from pathlib import Path
 
 import polars as pl
 
 from viz.names import crystal_name
+
+DATA = Path(os.environ.get("TEXTAL_DATA", "data/textal")).resolve()
 
 ENTRY_COLUMNS = {"id", "doi", "pmcid", "paper_id", "extraction_json"}
 PAPER_COLUMNS = {
@@ -30,8 +35,13 @@ FIELDS = {
 }
 
 
-def load_public_data(folder: Path):
-    snapshot = json.loads((folder / "publisher_snapshot.json").read_text())
+def package_name(pmcid):
+    """The path of a paper's publisher files in the dataset: a tar of its manifest and files."""
+    return "files/" + pmcid[-2:] + "/" + pmcid + ".tar.gz"
+
+
+def load_public_data():
+    snapshot = json.loads((DATA / "snapshot.json").read_text())
     version = snapshot.get("schema")
     if version not in {"publisher-only-v1", "publisher-only-v2"}:
         raise ValueError("Rebuild publisher-only web assets; legacy CSD tables are unsupported.")
@@ -48,8 +58,8 @@ def load_public_data(folder: Path):
         "journals",
     }:
         raise ValueError("Unexpected public snapshot fields")
-    entry_table = pl.read_parquet(folder / "publisher_entries.parquet")
-    paper_table = pl.read_parquet(folder / "publisher_papers.parquet")
+    entry_table = pl.read_parquet(DATA / "entries.parquet")
+    paper_table = pl.read_parquet(DATA / "papers.parquet")
     entry_columns = ENTRY_COLUMNS if version.endswith("v2") else ENTRY_COLUMNS - {"paper_id"}
     paper_columns = (
         PAPER_COLUMNS if version.endswith("v2") else PAPER_COLUMNS - {"paper_id", "provenance_json"}

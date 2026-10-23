@@ -3,7 +3,7 @@
 # the CSD entries, downloaded from PubMed Central (PMC), then parsed to Markdown. The extraction
 # (`data/extractions.parquet`) and the Acta E collection (`data/viz/`) are made elsewhere and
 # taken as given, so the figures of the README (`plot_extraction`, `example`) and the tables of
-# the website (`assets`) are not part of `all`.
+# the website (`tables`) are not part of `all`.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -18,7 +18,7 @@
 #     pixi run snakemake -s scripts/Snakefile -j1 all     # the corpus
 
 PAPERS = "data/papers"
-ASSETS = "src/viz/assets"
+DATA = "data/textal"
 
 
 rule all:
@@ -98,7 +98,7 @@ rule texts:
         "python scripts/runs/viz/s1_import_texts.py --input {input} --output {output}"
 
 
-rule assets:
+rule tables:
     input:
         sections="data/viz/acta-e-papers.jsonl.gz",
         extractions="data/extractions.parquet",
@@ -106,10 +106,10 @@ rule assets:
         linkage="data/viz/publisher-targets.json",
         texts="data/publisher-texts",
     output:
-        f"{ASSETS}/publisher_entries.parquet",
-        f"{ASSETS}/publisher_papers.parquet",
-        f"{ASSETS}/publisher_snapshot.json",
+        f"{DATA}/entries.parquet",
+        f"{DATA}/papers.parquet",
+        f"{DATA}/snapshot.json",
     shell:
         "python scripts/runs/viz/s2_assets.py --sections {input.sections}"
         " --extractions {input.extractions} --bibliography {input.bibliography}"
-        " --linkage {input.linkage} --texts {input.texts} --output {ASSETS}"
+        " --linkage {input.linkage} --texts {input.texts} --output {DATA}"

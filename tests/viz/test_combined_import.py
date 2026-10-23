@@ -101,7 +101,7 @@ class CombinedImportTests(unittest.TestCase):
                 )
             self.assertEqual(result["refcodes"], 2)
             self.assertEqual(result["collections"]["Other journals"]["refcodes"], 1)
-            table = pl.read_parquet(output / "publisher_entries.parquet").to_dicts()
+            table = pl.read_parquet(output / "entries.parquet").to_dicts()
             other = next(r for r in table if r["id"] == "QWERTY")
             self.assertIsNone(other["pmcid"])
             self.assertEqual(other["paper_id"], "doi:10.1234/other")

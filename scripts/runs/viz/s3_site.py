@@ -14,14 +14,14 @@ from pathlib import Path
 import polars as pl
 
 
-def subset_assets(assets, refcodes, output):
+def subset_tables(data, refcodes, output):
     """Writes the website tables restricted to `refcodes` (and their papers) into `output`."""
-    entries = pl.read_parquet(assets / "publisher_entries.parquet")
+    entries = pl.read_parquet(data / "entries.parquet")
     entries = entries.filter(pl.col("id").is_in(refcodes))
-    papers = pl.read_parquet(assets / "publisher_papers.parquet")
+    papers = pl.read_parquet(data / "papers.parquet")
     papers = papers.filter(pl.col("paper_id").is_in(entries["paper_id"].implode()))
 
-    snapshot = json.loads((assets / "publisher_snapshot.json").read_text())
+    snapshot = json.loads((data / "snapshot.json").read_text())
     statuses = Counter(json.loads(x)["status"] for x in entries["extraction_json"])
     collections = {}
     for name in ("Acta E", "Other journals"):
@@ -43,27 +43,26 @@ def subset_assets(assets, refcodes, output):
         journals=dict(Counter(papers["journal"]).most_common()),
     )
     output.mkdir(parents=True, exist_ok=True)
-    entries.write_parquet(output / "publisher_entries.parquet")
-    papers.write_parquet(output / "publisher_papers.parquet")
-    (output / "publisher_snapshot.json").write_text(json.dumps(snapshot, indent=2))
-    shutil.copy(assets / "stats.json", output / "stats.json")
+    entries.write_parquet(output / "entries.parquet")
+    papers.write_parquet(output / "papers.parquet")
+    (output / "snapshot.json").write_text(json.dumps(snapshot, indent=2))
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--root", default="/textal", help="the path the site is served under")
     p.add_argument("--subset", type=Path, help="a Parquet table whose `id` column lists refcodes")
-    p.add_argument("--assets", type=Path, default=Path("src/viz/assets"))
+    p.add_argument("--data", type=Path, default=Path("data/textal"))
     p.add_argument("--cache", type=Path, default=Path("data/publisher-cache"))
     p.add_argument("--output", type=Path, default=Path("data/site"))
     a = p.parse_args()
 
-    assets = a.assets
+    data = a.data
     if a.subset:
-        assets = a.output.with_name(a.output.name + "-assets")
+        data = a.output.with_name(a.output.name + "-data")
         refcodes = pl.read_parquet(a.subset)["id"].implode()
-        subset_assets(a.assets, refcodes, assets)
-    os.environ["TEXTAL_ASSETS"] = str(assets.resolve())
+        subset_tables(a.data, refcodes, data)
+    os.environ["TEXTAL_DATA"] = str(data.resolve())
     os.environ["TEXTAL_PUBLISHER_CACHE"] = str(a.cache.resolve())
     os.environ.pop("TEXTAL_ASSET_SSH", None)
 

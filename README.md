@@ -38,14 +38,16 @@ pixi install
 every CSD entry (refcode, compound name, journal and DOI). Exporting it needs a licence from the
 Cambridge Crystallographic Data Centre (CCDC), so it is not in this repository. Install the CSD
 data from the [CCDC downloads page](https://www.ccdc.cam.ac.uk/support-and-resources/csdsdownloads/),
-install the CSD Python API in its own environment (`pixi install -e csd`), write your licence
-code to a file named `.env` at the repository root (the second line is needed only if the CCDC
-installer did not record the location of the CSD data in `~/.config/CCDC/CSD.ini`), then export:
+install the CSD Python API in its own environment (`pixi install -e csd`) and write your
+licence code to a file named `.env` at the repository root:
 
 ```bash
 CCDC_LICENSING_CONFIGURATION=la-code;<your-licence-code>
 CSD_DATA_DIRECTORY=<folder of the CSD data>
 ```
+
+The second line is needed only if the CCDC installer did not record the location of the CSD data
+in `~/.config/CCDC/CSD.ini`. Then export the metadata:
 
 ```bash
 pixi run -e csd python scripts/runs/csd/s0_metadata.py
@@ -83,15 +85,28 @@ pixi run snakemake -s scripts/Snakefile -j1 plot_extraction   # Figure 1
 pixi run snakemake -s scripts/Snakefile -j1 example           # the example above (needs Chrome)
 ```
 
+**Data.** The dataset is on Hugging Face at
+[alstonlo/textal-data](https://huggingface.co/datasets/alstonlo/textal-data): `entries.parquet`
+(one row per CSD refcode with its extracted record), `papers.parquet` (one row per paper: its
+bibliography, licence and the quoted snippets) and `files/<NN>/<PMCID>.tar.gz` (the CIFs and
+chemical schemes the publisher supplied with each paper, `NN` being the last two digits of the
+PMCID). The tables hold nothing from the CSD but refcodes and DOIs. Download it (about 3 GB)
+into `data/textal/`:
+
+```bash
+pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir data/textal
+```
+
 **Website.** For each extracted entry, the website shows the crystal structures of its paper
-(drawn from the publisher's CIFs), its chemical scheme, the paper's text and the record, with the
-quote behind each paragraph. It reads only the tables in `src/viz/assets/`, built with
-`pixi run snakemake -s scripts/Snakefile -j1 assets`, which hold nothing from the CSD but
-refcodes and DOIs; it shows the text of the CC BY papers only.
+(drawn from the publisher's CIFs), its chemical scheme and the record, with the quote behind each
+paragraph; it shows the text of the CC BY papers only. It runs on the downloaded dataset:
 
 ```bash
 pixi run web --port 8000
 ```
+
+The tables are built from the corpus with `pixi run snakemake -s scripts/Snakefile -j1 tables`
+and the paper packages with `scripts/runs/viz/s3_release.py`.
 
 ## About TEXtal
 
@@ -167,7 +182,7 @@ CC BY papers as a public dataset.
 ## Licence
 
 The CSD metadata is licensed by the CCDC and is not redistributed here, nor are tables built from
-it (the website's tables hold only refcodes and DOIs; `stats.json` holds counts only). Each paper
+it (the website's tables hold only refcodes and DOIs). Each paper
 keeps the licence given in its PMC record, and the Acta E files (CIFs and chemical schemes) the
 [terms of use](https://journals.iucr.org/services/termsofuse.html) of the IUCr; the website shows
 the text of the CC BY papers only.

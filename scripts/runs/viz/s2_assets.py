@@ -160,9 +160,9 @@ def paper_record(paper, sections, licenses, provenance):
 
 
 def publish(entries, papers, output, preserve_existing=False):
-    if preserve_existing and (output / "publisher_entries.parquet").exists():
-        old_entries = pl.read_parquet(output / "publisher_entries.parquet").to_dicts()
-        old_papers = pl.read_parquet(output / "publisher_papers.parquet").to_dicts()
+    if preserve_existing and (output / "entries.parquet").exists():
+        old_entries = pl.read_parquet(output / "entries.parquet").to_dicts()
+        old_papers = pl.read_parquet(output / "papers.parquet").to_dicts()
         for old in old_papers:
             if "paper_id" not in old:
                 old["paper_id"] = "doi:" + old["doi"]
@@ -206,17 +206,17 @@ def publish(entries, papers, output, preserve_existing=False):
     output.mkdir(parents=True, exist_ok=True)
     for filename, rows, schema in (
         (
-            "publisher_entries.parquet",
+            "entries.parquet",
             sorted(entries.values(), key=lambda e: e["id"]),
             ENTRY_COLUMNS,
         ),
-        ("publisher_papers.parquet", list(papers.values()), PAPER_COLUMNS),
+        ("papers.parquet", list(papers.values()), PAPER_COLUMNS),
     ):
         temporary = output / (filename + ".part")
         pl.DataFrame(rows, schema=schema).write_parquet(temporary)
         temporary.replace(output / filename)
-    (output / "publisher_snapshot.json.part").write_text(json.dumps(manifest, indent=2))
-    (output / "publisher_snapshot.json.part").replace(output / "publisher_snapshot.json")
+    (output / "snapshot.json.part").write_text(json.dumps(manifest, indent=2))
+    (output / "snapshot.json.part").replace(output / "snapshot.json")
     print(json.dumps(manifest, indent=2))
     return manifest
 
@@ -361,7 +361,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--sections", type=Path, required=True)
     p.add_argument("--extractions", type=Path, required=True)
-    p.add_argument("--output", type=Path, default=Path("src/viz/assets"))
+    p.add_argument("--output", type=Path, default=Path("data/textal"))
     p.add_argument("--bibliography", type=Path)
     p.add_argument("--linkage", type=Path)
     p.add_argument("--texts", type=Path)

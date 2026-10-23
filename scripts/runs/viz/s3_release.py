@@ -1,75 +1,65 @@
-"""Lay out the public dataset for Hugging Face: the website tables and the publisher files.
+"""Pack the publisher files into the dataset folder, next to the tables of `s2_assets.py`.
 
-Only what the papers themselves provide is released: the extracted procedures (the public
-website tables, which carry no CSD matching rationale or CSD metadata), and each paper's CIFs
-and chemical schemes as supplied by the publisher. The generated thumbnails are left out, and
-the files are hard-linked, so the folder costs little extra disk.
+Each paper of `data/publisher-cache/` becomes one tar (its manifest and the publisher's CIFs and
+chemical schemes, as supplied) at the path `viz.publisher_data.package_name` gives, so the folder
+is the public dataset as uploaded to Hugging Face (`dataset-card.md` is its README), and what the
+website reads. Only what the papers themselves provide is released: the website's tables carry no
+CSD matching rationale or CSD metadata, and the generated thumbnails are left out. Papers already
+packed are skipped. Upload the folder with
+`hf upload alstonlo/textal-data data/textal . --repo-type dataset`.
 """
 
 import argparse
+import io
 import json
-import os
 import shutil
+import tarfile
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
-README = """\
-# TEXtal data
+from viz.publisher_data import package_name
 
-Crystallisation and synthesis procedures extracted from the open-access papers of CSD entries,
-with the CIFs and chemical schemes that the publishers supply with each paper. The CSD
-contributes only the refcodes and their link to a paper (DOI); no CSD metadata is included.
+CARD = Path(__file__).with_name("dataset-card.md")
 
-- `entries.parquet`: one row per refcode (`id`), with the paper's DOI and PMCID and the
-  extracted record as JSON (`extraction_json`).
-- `papers.parquet`: one row per paper, with its bibliography, licence, the publisher text
-  snippets the extraction quotes (`paragraphs_json`) and its provenance.
-- `snapshot.json`: counts per extraction status, collection and journal.
-- `files/<PMCID>/`: the publisher's files for that paper, from its PubMed Central OA package:
-  `*.cif` and the chemical schemes, plus `manifest.json` with each file's original name,
-  SHA-256 and source URL. The files keep the licence of their paper (see `papers.parquet`).
-- `demo/`: the same tables restricted to the entries shown on the demo website.
 
-Download everything with `hf download alstonlo/textal-data --repo-type dataset`.
-"""
+def pack(folder, target):
+    """Writes the paper's package to `target`; returns the number of files in it."""
+    data = json.loads((folder / "manifest.json").read_text())
+    names = [f["cache_name"] for f in data["cifs"] + data["figures"]]
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz", compresslevel=6) as tar:
+        for name in ["manifest.json"] + names:
+            tar.add(folder / name, arcname=name)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.with_name(target.name + ".part")
+    temp.write_bytes(buffer.getvalue())
+    temp.replace(target)
+    return len(names)
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--assets", type=Path, default=Path("src/viz/assets"))
-    p.add_argument("--demo-assets", type=Path, default=Path("data/site-assets"))
     p.add_argument("--cache", type=Path, default=Path("data/publisher-cache"))
-    p.add_argument("--output", type=Path, default=Path("data/release"))
+    p.add_argument("--output", type=Path, default=Path("data/textal"))
+    p.add_argument("--workers", type=int, default=32)
     a = p.parse_args()
 
-    out = a.output
-    if out.exists():
-        shutil.rmtree(out)
-    out.mkdir(parents=True)
-    (out / "README.md").write_text(README)
-    for folder, target in ((a.assets, out), (a.demo_assets, out / "demo")):
-        if not folder.is_dir():
-            continue
-        target.mkdir(exist_ok=True)
-        for name in ("entries", "papers"):
-            shutil.copy(folder / f"publisher_{name}.parquet", target / f"{name}.parquet")
-        shutil.copy(folder / "publisher_snapshot.json", target / "snapshot.json")
-
-    counts = {"papers": 0, "files": 0}
+    a.output.mkdir(parents=True, exist_ok=True)
+    shutil.copy(CARD, a.output / "README.md")
+    jobs = {}
+    counts = {"papers": 0, "files": 0, "skipped": 0}
     for folder in sorted(a.cache.iterdir()):
-        manifest = folder / "manifest.json"
-        if not manifest.is_file():
+        if not (folder / "manifest.json").is_file():
             continue
-        data = json.loads(manifest.read_text())
-        names = [f["cache_name"] for f in data["cifs"] + data["figures"]]
-        if not names:
-            continue
-        target = out / "files" / folder.name
-        target.mkdir(parents=True)
-        for name in names:
-            os.link(folder / name, target / name)
-        os.link(manifest, target / "manifest.json")
-        counts["papers"] += 1
-        counts["files"] += len(names)
+        target = a.output / package_name(folder.name)
+        if target.is_file():
+            counts["skipped"] += 1
+        else:
+            jobs[folder] = target
+    with ProcessPoolExecutor(a.workers) as pool:
+        for n in pool.map(pack, jobs.keys(), jobs.values(), chunksize=64):
+            counts["papers"] += 1
+            counts["files"] += n
     print(json.dumps(counts))
 
 
