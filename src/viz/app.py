@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from viz import publisher_assets, publisher_text
-from viz.publisher_data import DATA, load_public_data
+from viz.publisher_data import DATA, licence, load_public_data
 
 HERE = Path(__file__).parent
 INK, MUTED, GRID = "#111111", "#6B6B68", "#E5E5E3"
@@ -29,6 +29,7 @@ SEARCH = {
     for e in ENTRIES
 }
 publisher_assets.configure(PAPERS)
+publisher_text.configure(PAPERS)
 FIELDS = [
     "crystallisation",
     "synthesis",
@@ -78,28 +79,15 @@ def figure(traces: list, **layout) -> dict:
     return json.loads(fig.to_json())
 
 
-# The licence of a paper, from the first of these tokens found in its licence evidence: a
-# Creative Commons URL (Acta E, where the URL is sometimes only quoted in the evidence text) or
-# the licence code of its PMC record (the other journals), where "TDM" marks an author
-# manuscript. The order matters, as "cc by" is a prefix of the other codes.
-LICENCES = [
-    (("publicdomain/zero", "cc0"), "CC0"),
-    (("licenses/by-nc-nd/", "cc by-nc-nd"), "CC BY-NC-ND"),
-    (("licenses/by-nc-sa/", "cc by-nc-sa"), "CC BY-NC-SA"),
-    (("licenses/by-nc/", "cc by-nc"), "CC BY-NC"),
-    (("licenses/by-sa/", "cc by-sa"), "CC BY-SA"),
-    (("licenses/by/", "cc by"), "CC BY"),
-    (("tdm",), "Author manuscript"),
-]
-PUBLISHER_TERMS, NOT_INDEXED = "Publisher terms", "Not indexed"
-
 # The names of the largest journals on the chart; the tables keep the publisher's names.
 JOURNAL_ALIASES = {
     "Acta Crystallographica E": "Acta Cryst. E",
-    "Angew.Chem.,Int.Ed.": "Angew. Chem.",
-    "Chem.-Eur.J.": "Chem. Eur. J.",
-    "Inorg.Chem.": "Inorg. Chem.",
-    "Cryst.Growth Des.": "Cryst. Growth Des.",
+    "Angewandte Chemie (International ed. in English)": "Angew. Chem.",
+    "Chemistry (Weinheim an der Bergstrasse, Germany)": "Chem. Eur. J.",
+    "Inorganic chemistry": "Inorg. Chem.",
+    "Crystal growth & design": "Cryst. Growth Des.",
+    "ChemistryOpen": "ChemistryOpen",
+    "Advanced science (Weinheim, Baden-Wurttemberg, Germany)": "Adv. Sci.",
 }
 
 
@@ -144,15 +132,7 @@ def load_stats(entries):
     years = Counter(p["year"] for p in PAPERS.values() if p.get("year"))
     refyears = Counter(e["paper"]["year"] for e in entries if e["paper"].get("year"))
     journals = Counter(p["journal"] for p in PAPERS.values())
-    licenses = Counter()
-    for p in PAPERS.values():
-        text = " ".join(f"{e.get('url')} {e.get('type')} {e.get('text')}" for e in p["licenses"])
-        text = text.lower()
-        names = [name for tokens, name in LICENCES if any(t in text for t in tokens)]
-        if names:
-            licenses[names[0]] += 1
-        else:
-            licenses[PUBLISHER_TERMS if p["licenses"] else NOT_INDEXED] += 1
+    licenses = Counter(licence(p["licenses"]) for p in PAPERS.values())
 
     # The largest journals and licences, the rest bucketed into one bar.
     top = journals.most_common(6)
@@ -216,6 +196,7 @@ def refresh_snapshot():
             for e in entries
         }
         publisher_assets.configure(papers)
+        publisher_text.configure(papers)
         STATS = load_stats(entries)
         SNAPSHOT_MTIME = stamp
 
@@ -228,6 +209,7 @@ templates = Jinja2Templates(directory=HERE / "templates")
 # The path the site is served under; a static export for alstonlo.github.io/textal sets "/textal".
 templates.env.globals["root"] = ""
 templates.env.globals["static_site"] = False
+templates.env.globals["thumb_version"] = publisher_assets.THUMB_VERSION
 PAGE_SIZE = 48
 
 
@@ -405,12 +387,9 @@ def publisher_thumbnail(pmcid: str):
         )
 
 
-@app.get("/api/paper-text")
-def paper_text(doi: str):
-    paper = PAPERS.get("doi:" + doi.lower())
+@app.get("/api/paper-text/{pmcid}")
+def paper_text(pmcid: str):
+    paper = publisher_text.PAPERS.get(pmcid)
     if paper is None:
-        raise HTTPException(404, "Unknown publisher paper")
-    try:
-        return publisher_text.read(paper["doi"])
-    except (OSError, ValueError):
-        raise HTTPException(404, "Publisher text unavailable") from None
+        raise HTTPException(404, "Publisher text not in the dataset")
+    return publisher_text.read(paper)

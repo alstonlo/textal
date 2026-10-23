@@ -163,28 +163,35 @@ def whole_molecules(
     return frac + offset, mols
 
 
-# A fixed oblique view: the cell is tilted so that all three axes read as a box.
-VIEW = np.asarray(
-    [
-        [math.cos(0.5), 0.0, -math.sin(0.5)],
-        [math.sin(0.35) * math.sin(0.5), math.cos(0.35), math.sin(0.35) * math.cos(0.5)],
-        [math.cos(0.35) * math.sin(0.5), -math.sin(0.35), math.cos(0.35) * math.cos(0.5)],
-    ]
-)
-
-
-def draw_cell(cif: str, size: int = 240, ink: str = "#111111") -> str:
+def draw_cell(
+    cif: str,
+    size: int = 240,
+    ink: str = "#111111",
+    view: tuple[float, float] = (0.5, 0.35),
+) -> str:
     """Draws the filled unit cell as a flat one-colour SVG: cell edges, bonds and heavy atoms.
 
     Hydrogens are left out and carbons are smaller dots, so the drawing stays legible at thumbnail
     size and reads as a specimen on a coloured tile. Other atoms grow with their covalent radius,
     so metals and halogens stand out, from a floor that keeps the colours of N, O and F legible.
+
+    Args:
+        view: The yaw and pitch (radians) of the camera. The default tilts the cell so that all
+            three axes read as a box.
     """
+    yaw, pitch = view
+    rot = np.asarray(
+        [
+            [math.cos(yaw), 0.0, -math.sin(yaw)],
+            [math.sin(pitch) * math.sin(yaw), math.cos(pitch), math.sin(pitch) * math.cos(yaw)],
+            [math.cos(pitch) * math.sin(yaw), -math.sin(pitch), math.cos(pitch) * math.cos(yaw)],
+        ]
+    )
     elems, frac, lattice, _ = parse_structure(cif)
     heavy = [i for i, e in enumerate(elems) if e != "H"]
     elems = [elems[i] for i in heavy]
-    cart = (frac[heavy] @ lattice) @ VIEW.T
-    corners = (UNIT_CUBE_EDGES.reshape(-1, 3) @ lattice) @ VIEW.T
+    cart = (frac[heavy] @ lattice) @ rot.T
+    corners = (UNIT_CUBE_EDGES.reshape(-1, 3) @ lattice) @ rot.T
 
     pts = np.concatenate([cart, corners])
     lo, hi = pts[:, :2].min(0), pts[:, :2].max(0)

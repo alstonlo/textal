@@ -41,8 +41,7 @@ PAGE = """<!doctype html><html><head><meta charset="utf-8">
 <div class="names">{chemical_name}<br>CSD {refcode}, CCDC {ccdc}</div>
 <div class="tile">{cell}</div></div>
 <div><div class="kicker">Extracted from {authors}, {journal} ({year})</div>
-<div class="row"><span class="label">Matched as</span>
-<span>{label} <span class="muted">({confidence} confidence)</span></span></div>
+<div class="row"><span class="label">Match confidence</span><span>{confidence}</span></div>
 {rows}
 </div></div></body></html>"""
 
@@ -56,8 +55,8 @@ def main(
     """Renders the README's example record: the unit cell of one CSD entry beside its record.
 
     The entry must be in the CSD drug subset (`data/viz/csd_drugs_with_paper.parquet`), which
-    supplies the drug's common name and CIF. The page is laid out in HTML and screenshotted
-    with headless Chrome, so `chrome` must be installed.
+    supplies the CIF. The page is laid out in HTML and screenshotted with headless Chrome, so
+    `chrome` must be installed.
     """
     data = DATA_DIR
     drug = pl.read_parquet(data / "viz" / "csd_drugs_with_paper.parquet")
@@ -73,9 +72,10 @@ def main(
     first = paper["authors"].split(",")[0].split(".")[-1]
     authors = first if ("," not in paper["authors"]) else f"{first} et al."
     journal = nlm_abbrevs(meta, [paper["journal"]], data / "papers" / "raw")[paper["journal"]]
+    # The view shows the caffeinium rings face on, beside the hydrogen sulfates and the waters.
     # The drawing is a square with empty bands above and below the cell; cropping the view to the
     # drawn contents makes the tile as wide as the cell and no taller.
-    cell = draw_cell(drug["cif"], size=240)
+    cell = draw_cell(drug["cif"], size=240, view=(-0.52, 0.6))
     ys = [float(y) for y in re.findall(r'(?:[ML]-?[\d.]+ |cy=")(-?[\d.]+)', cell)]
     lo, hi = min(ys) - 8, max(ys) + 8
     cell = re.sub(
@@ -87,14 +87,13 @@ def main(
     )
     page = PAGE.format(
         cell=cell,
-        name=html.escape(drug["common_name"]),
+        name=html.escape(ext["compound_label"]),
         chemical_name=html.escape(csd["chemical_name"]),
         refcode=refcode,
         ccdc=csd["ccdc_number"],
         authors=html.escape(authors),
         journal=html.escape(journal),
         year=paper["year"],
-        label=html.escape(ext["compound_label"]),
         confidence=ext["match_confidence"],
         rows=rows,
     )

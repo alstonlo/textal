@@ -1,9 +1,9 @@
 # The chain from the CSD metadata to the corpus: the metadata of every CSD entry, exported with
 # the CSD Python API (which needs a CCDC licence, see the README), then the open-access papers of
 # the CSD entries, downloaded from PubMed Central (PMC), then parsed to Markdown. The extraction
-# (`data/extractions.parquet`) and the Acta E collection (`data/viz/`) are made elsewhere and
-# taken as given, so the figures of the README (`plot_extraction`, `example`) and the tables of
-# the website (`tables`) are not part of `all`.
+# (`data/extractions.parquet`) and the Acta E collection (`data/viz/acta-e-papers.jsonl.gz`) are
+# made elsewhere and taken as given, so the figures of the README (`plot_extraction`, `example`)
+# and the dataset of the website (`release`) are not part of `all`.
 #
 # This file is kept for what it documents -- which script produces which file from which input, in
 # the one form that stays true because it is what actually runs. All the logic is in the scripts;
@@ -77,39 +77,56 @@ rule example:
         "python scripts/analysis/s0_example_figure.py"
 
 
-# The tables of the website. The bibliography is fetched from Europe PMC and Crossref for the
-# papers listed in `publisher-targets.json`; the publisher texts are exported on the machine
-# that holds the paper archive (`s0_export_texts.py`) and imported here.
+# The tables of the website. The papers of the other journals are listed with their PMC licence,
+# and their bibliography is fetched from Europe PMC and Crossref. The tables take the texts and
+# authors from the parsed corpus, release a paper's text and publisher files only under a
+# Creative Commons licence, and read the CSD metadata only to remove what the records copied
+# from it. `release` packs the publisher files (`data/publisher-cache/` is copied from the
+# archive of PMC packages and taken as given).
+rule targets:
+    input:
+        sections="data/viz/acta-e-papers.jsonl.gz",
+        extractions="data/extractions.parquet",
+        metadata=f"{PAPERS}/metadata.parquet",
+    output:
+        "data/viz/publisher-targets.json",
+    shell:
+        "python scripts/runs/viz/s0_targets.py --sections {input.sections}"
+        " --extractions {input.extractions} --metadata {input.metadata} --output {output}"
+
+
 rule bibliography:
     input:
         "data/viz/publisher-targets.json",
     output:
         "data/viz/publisher-bibliography.json",
     shell:
-        "python scripts/runs/viz/s0_bibliography.py --targets {input} --output {output}"
-
-
-rule texts:
-    input:
-        "data/viz/publisher-texts.jsonl.gz",
-    output:
-        directory("data/publisher-texts"),
-    shell:
-        "python scripts/runs/viz/s1_import_texts.py --input {input} --output {output}"
+        "python scripts/runs/viz/s1_bibliography.py --targets {input} --output {output}"
 
 
 rule tables:
     input:
         sections="data/viz/acta-e-papers.jsonl.gz",
         extractions="data/extractions.parquet",
+        csd="data/raw/csd_metadata.full.parquet",
         bibliography="data/viz/publisher-bibliography.json",
         linkage="data/viz/publisher-targets.json",
-        texts="data/publisher-texts",
+        parsed=f"{PAPERS}/parsed.parquet",
     output:
         f"{DATA}/entries.parquet",
         f"{DATA}/papers.parquet",
         f"{DATA}/snapshot.json",
     shell:
         "python scripts/runs/viz/s2_assets.py --sections {input.sections}"
-        " --extractions {input.extractions} --bibliography {input.bibliography}"
-        " --linkage {input.linkage} --texts {input.texts} --output {DATA}"
+        " --extractions {input.extractions} --csd {input.csd}"
+        " --bibliography {input.bibliography} --linkage {input.linkage}"
+        " --papers {PAPERS} --cache data/publisher-cache --output {DATA}"
+
+
+rule release:
+    input:
+        f"{DATA}/papers.parquet",
+    output:
+        f"{DATA}/README.md",
+    shell:
+        "python scripts/runs/viz/s3_release.py --cache data/publisher-cache --output {DATA}"

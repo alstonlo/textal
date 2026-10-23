@@ -12,6 +12,14 @@ from pathlib import Path
 import polars as pl
 from fastapi.testclient import TestClient
 
+# The website's modules read these when imported, which the builder already does.
+TEMP = tempfile.TemporaryDirectory()
+os.environ.update(
+    TEXTAL_DATA=str(Path(TEMP.name) / "assets"),
+    TEXTAL_PUBLISHER_CACHE=str(Path(TEMP.name) / "cache"),
+    TEXTAL_ASSET_SSH="0",
+)
+
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("builder", ROOT / "scripts/runs/viz/s2_assets.py")
 builder = importlib.util.module_from_spec(spec)
@@ -39,13 +47,28 @@ _atom_site_occupancy
 O1 O 0.95 0.1 0.2 1
 """
 SECRET = "PRIVATE_CSD_SENTINEL"
+QUOTE = "Crystals were grown by slow evaporation from ethanol."
+
+
+def write_csd(path, rows):
+    """Writes CSD rows with the columns the extraction model saw, the rest left empty."""
+    schema = {key: pl.String for key in builder.ENTRY_FIELDS}
+    schema |= {"ccdc_number": pl.Int64, "synonyms": pl.List(pl.String)}
+    columns = {key: None for key in schema} | {"synonyms": []}
+    pl.DataFrame([columns | row for row in rows], schema=schema).write_parquet(path)
+
+
+def write_paper(pmc, doi, text):
+    """Writes the parsed Markdown of one paper and its row of `metadata.parquet`."""
+    (pmc / "parsed" / doi / "paper.md").parent.mkdir(parents=True)
+    (pmc / "parsed" / doi / "paper.md").write_text(text)
+    pl.DataFrame({"doi": [doi], "dir": [doi]}).write_parquet(pmc / "metadata.parquet")
 
 
 class PublisherSiteTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.temp = tempfile.TemporaryDirectory()
-        cls.folder = Path(cls.temp.name)
+        cls.folder = Path(TEMP.name)
         cls.output = cls.folder / "assets"
         cls.output.mkdir()
         sections = cls.folder / "sections.jsonl.gz"
@@ -59,12 +82,7 @@ class PublisherSiteTests(unittest.TestCase):
             "ccdc_numbers": [123456],
             "chemical_name": SECRET,
             "cif": SECRET,
-            "paragraphs": [
-                {
-                    "paragraph_index": 0,
-                    "text": "Crystals were grown by slow evaporation from ethanol.",
-                }
-            ],
+            "paragraphs": [{"paragraph_index": 0, "text": QUOTE}],
             "matched_sections": [
                 {"title": "Synthesis and crystallization", "paragraph_indices": [0]}
             ],
@@ -81,7 +99,7 @@ class PublisherSiteTests(unittest.TestCase):
         extraction = {
             "identifier": "ABCDEF",
             "doi": "10.1107/test",
-            "crystallisation": "Slow evaporation from ethanol.",
+            "crystallisation": "Slow evaporation from ethanol. The CSD entry says so.",
             "synthesis": "Unverified field is withheld.",
             "match_basis": SECRET,
             "compound_label": SECRET,
@@ -99,13 +117,18 @@ class PublisherSiteTests(unittest.TestCase):
         }
         ext = cls.folder / "extractions.parquet"
         pl.DataFrame([extraction]).write_parquet(ext)
-        builder.build(sections, ext, cls.output)
-        pl.DataFrame({"cif": [SECRET], "chemical_name": [SECRET]}).write_parquet(
-            cls.output / "csd_entries.parquet"
-        )
+        csd = cls.folder / "csd.parquet"
+        write_csd(csd, [{"identifier": "ABCDEF", "chemical_name": SECRET, "color": "yellow"}])
+        pmc = cls.folder / "papers"
+        write_paper(pmc, "10.1107/test", "# Publisher article\n\n" + QUOTE)
         cls.cache = cls.folder / "cache"
         paper = cls.cache / "PMC1234"
         paper.mkdir(parents=True)
+        (paper / "manifest.json").touch()
+        builder.build(sections, ext, cls.output, csd, pmc=pmc, cache=cls.cache)
+        pl.DataFrame({"cif": [SECRET], "chemical_name": [SECRET]}).write_parquet(
+            cls.output / "csd_entries.parquet"
+        )
         cls.raw = (CIF + CIF.replace("data_I", "data_II")).encode()
         (paper / "0-publisher.cif").write_bytes(cls.raw)
         (paper / "1-scheme1.png").write_bytes(b"publisher image bytes")
@@ -134,11 +157,6 @@ class PublisherSiteTests(unittest.TestCase):
             ],
         }
         (paper / "manifest.json").write_text(json.dumps(manifest))
-        os.environ.update(
-            TEXTAL_DATA=str(cls.output),
-            TEXTAL_PUBLISHER_CACHE=str(cls.cache),
-            TEXTAL_ASSET_SSH="0",
-        )
         from viz.app import app
 
         cls.client = TestClient(app)
@@ -146,7 +164,7 @@ class PublisherSiteTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.client.close()
-        cls.temp.cleanup()
+        TEMP.cleanup()
 
     def test_import_includes_pending_refcodes(self):
         result = self.client.get("/api/collection").json()
@@ -175,30 +193,24 @@ class PublisherSiteTests(unittest.TestCase):
         self.assertNotIn("match_basis", text)
         self.assertNotIn("package_path", text)
         self.assertNotIn("Unverified field", text)
+        self.assertIn("Slow evaporation from ethanol.", text)
+        self.assertNotIn("The CSD entry says so", text)
 
     def test_full_publisher_text_is_scoped_to_imported_papers(self):
-        from unittest.mock import patch
+        from viz.publisher_data import text_name
 
-        from viz import publisher_text
-
-        with patch.object(publisher_text, "DIRECTORY", self.folder / "texts"):
-            publisher_text.DIRECTORY.mkdir(exist_ok=True)
-            doi = "10.1107/test"
-            path = publisher_text.DIRECTORY / (
-                hashlib.sha256(doi.encode()).hexdigest() + ".json.gz"
-            )
-            data = {"doi": doi, "main_text": "# Publisher article", "supplements": []}
+        response = self.client.get("/api/paper-text/PMC1234").json()
+        self.assertEqual(response["main_text"], "# Publisher article\n\n" + QUOTE)
+        self.assertEqual(self.client.get("/api/paper-text/PMC9999").status_code, 404)
+        path = self.output / text_name("PMC1234")
+        original = path.read_bytes()
+        try:
             with gzip.open(path, "wt") as stream:
-                json.dump(data, stream)
-            self.assertEqual(self.client.get("/api/paper-text", params={"doi": doi}).json(), data)
-            self.assertEqual(
-                self.client.get("/api/paper-text", params={"doi": "../private"}).status_code, 404
-            )
-            with gzip.open(path, "wt") as stream:
-                json.dump({**data, "csd_metadata": SECRET}, stream)
-            self.assertEqual(
-                self.client.get("/api/paper-text", params={"doi": doi}).status_code, 404
-            )
+                json.dump({**response, "csd_metadata": SECRET}, stream)
+            with self.assertRaises(ValueError):
+                self.client.get("/api/paper-text/PMC1234")
+        finally:
+            path.write_bytes(original)
         page = self.client.get("/entry/ABCDEF").text
         self.assertLess(
             page.index("What the paper says about this crystal"), page.index('class="paper"')

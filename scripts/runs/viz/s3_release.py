@@ -1,12 +1,13 @@
 """Pack the publisher files into the dataset folder, next to the tables of `s2_assets.py`.
 
-Each paper of `data/publisher-cache/` becomes one tar (its manifest and the publisher's CIFs and
-chemical schemes, as supplied) at the path `viz.publisher_data.package_name` gives, so the folder
-is the public dataset as uploaded to Hugging Face (`dataset-card.md` is its README), and what the
-website reads. Only what the papers themselves provide is released: the website's tables carry no
-CSD matching rationale or CSD metadata, and the generated thumbnails are left out. Papers already
-packed are skipped. Upload the folder with
-`hf upload alstonlo/textal-data data/textal . --repo-type dataset`.
+Each paper of the tables with `has_publisher_package` (set only for a Creative Commons licence)
+becomes one tar of `data/publisher-cache/` (its manifest and the publisher's CIFs and chemical
+schemes, as supplied) at the path `viz.publisher_data.package_name` gives, so the folder is the
+public dataset as uploaded to Hugging Face (`dataset-card.md` is its README), and what the website
+reads. The generated thumbnails are left out. Papers already packed are skipped, and the packages
+of papers no longer released are removed. Upload the folder with
+`hf upload alstonlo/textal-data data/textal . --repo-type dataset --delete "*"`, which also
+deletes the remote files that are no longer in it.
 """
 
 import argparse
@@ -16,6 +17,8 @@ import shutil
 import tarfile
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
+
+import polars as pl
 
 from viz.publisher_data import package_name
 
@@ -44,18 +47,24 @@ def main():
     p.add_argument("--workers", type=int, default=32)
     a = p.parse_args()
 
-    a.output.mkdir(parents=True, exist_ok=True)
     shutil.copy(CARD, a.output / "README.md")
+    papers = pl.read_parquet(a.output / "papers.parquet", columns=["pmcid", "provenance_json"])
+    released = {
+        a.output / package_name(pmcid)
+        for pmcid, provenance in papers.iter_rows()
+        if json.loads(provenance)["has_publisher_package"]
+    }
+    counts = {"papers": 0, "files": 0, "skipped": 0, "removed": 0}
+    for path in (a.output / "files").glob("*/*.tar.gz"):
+        if path not in released:
+            path.unlink()
+            counts["removed"] += 1
     jobs = {}
-    counts = {"papers": 0, "files": 0, "skipped": 0}
-    for folder in sorted(a.cache.iterdir()):
-        if not (folder / "manifest.json").is_file():
-            continue
-        target = a.output / package_name(folder.name)
+    for target in sorted(released):
         if target.is_file():
             counts["skipped"] += 1
         else:
-            jobs[folder] = target
+            jobs[a.cache / target.name.removesuffix(".tar.gz")] = target
     with ProcessPoolExecutor(a.workers) as pool:
         for n in pool.map(pack, jobs.keys(), jobs.values(), chunksize=64):
             counts["papers"] += 1

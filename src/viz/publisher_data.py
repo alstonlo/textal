@@ -20,6 +20,7 @@ PAPER_COLUMNS = {
     "title",
     "journal",
     "year",
+    "authors_json",
     "paragraphs_json",
     "sections_json",
     "licenses_json",
@@ -35,16 +36,45 @@ FIELDS = {
 }
 
 
+# The licence of a paper, from the first of these tokens found in its licence evidence: a
+# Creative Commons URL (Acta E, where the URL is sometimes only quoted in the evidence text) or
+# the licence code of its PMC record (the other journals), where "TDM" marks an author
+# manuscript. The order matters, as "cc by" is a prefix of the other codes.
+LICENCES = [
+    (("publicdomain/zero", "cc0"), "CC0"),
+    (("licenses/by-nc-nd/", "cc by-nc-nd"), "CC BY-NC-ND"),
+    (("licenses/by-nc-sa/", "cc by-nc-sa"), "CC BY-NC-SA"),
+    (("licenses/by-nc/", "cc by-nc"), "CC BY-NC"),
+    (("licenses/by-sa/", "cc by-sa"), "CC BY-SA"),
+    (("licenses/by/", "cc by"), "CC BY"),
+    (("tdm",), "Author manuscript"),
+]
+PUBLISHER_TERMS, NOT_INDEXED = "Publisher terms", "Not indexed"
+
+
+def licence(licenses):
+    """The name of a paper's licence; only the Creative Commons ones start with "CC"."""
+    text = " ".join(f"{e.get('url')} {e.get('type')} {e.get('text')}" for e in licenses).lower()
+    names = [name for tokens, name in LICENCES if any(t in text for t in tokens)]
+    if names:
+        return names[0]
+    return PUBLISHER_TERMS if licenses else NOT_INDEXED
+
+
 def package_name(pmcid):
     """The path of a paper's publisher files in the dataset: a tar of its manifest and files."""
     return "files/" + pmcid[-2:] + "/" + pmcid + ".tar.gz"
 
 
+def text_name(pmcid):
+    """The path of a paper's Markdown in the dataset: its text and supplementary documents."""
+    return "texts/" + pmcid[-2:] + "/" + pmcid + ".json.gz"
+
+
 def load_public_data():
     snapshot = json.loads((DATA / "snapshot.json").read_text())
-    version = snapshot.get("schema")
-    if version not in {"publisher-only-v1", "publisher-only-v2"}:
-        raise ValueError("Rebuild publisher-only web assets; legacy CSD tables are unsupported.")
+    if snapshot.get("schema") != "publisher-only-v3":
+        raise ValueError("Rebuild the dataset with s2_assets.py; older tables are unsupported.")
     if set(snapshot) - {
         "schema",
         "built_at",
@@ -60,28 +90,12 @@ def load_public_data():
         raise ValueError("Unexpected public snapshot fields")
     entry_table = pl.read_parquet(DATA / "entries.parquet")
     paper_table = pl.read_parquet(DATA / "papers.parquet")
-    entry_columns = ENTRY_COLUMNS if version.endswith("v2") else ENTRY_COLUMNS - {"paper_id"}
-    paper_columns = (
-        PAPER_COLUMNS if version.endswith("v2") else PAPER_COLUMNS - {"paper_id", "provenance_json"}
-    )
-    if set(entry_table.columns) != entry_columns or set(paper_table.columns) != paper_columns:
+    if set(entry_table.columns) != ENTRY_COLUMNS or set(paper_table.columns) != PAPER_COLUMNS:
         raise ValueError("Unexpected public columns; refusing an unreviewed schema.")
     papers = {}
     for p in paper_table.to_dicts():
-        p.setdefault("paper_id", "doi:" + p["doi"])
-        for key in ("paragraphs", "sections", "licenses"):
+        for key in ("authors", "paragraphs", "sections", "licenses", "provenance"):
             p[key] = json.loads(p.pop(key + "_json"))
-        p["provenance"] = (
-            json.loads(p.pop("provenance_json"))
-            if "provenance_json" in p
-            else {
-                "collection": "Acta E",
-                "bibliography_source": "Publisher XML",
-                "text_source": "Publisher XML sections",
-                "has_full_text": False,
-                "has_publisher_package": True,
-            }
-        )
         if set(p["provenance"]) - {
             "collection",
             "bibliography_source",
@@ -104,7 +118,6 @@ def load_public_data():
         papers[p["paper_id"]] = p
     entries = []
     for e in entry_table.to_dicts():
-        e.setdefault("paper_id", "doi:" + e["doi"])
         x = json.loads(e.pop("extraction_json"))
         if set(x) - {
             "status",

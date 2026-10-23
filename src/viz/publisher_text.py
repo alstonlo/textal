@@ -1,22 +1,23 @@
-"""Serve only publisher Markdown selected by public DOI identity, never archive metadata."""
+"""Serve the paper texts of the dataset folder, only for the papers whose table row has one."""
 
 import gzip
-import hashlib
 import json
-import os
-from pathlib import Path
 
-DIRECTORY = Path(os.environ.get("TEXTAL_PAPER_TEXTS", "data/publisher-texts")).resolve()
+from viz.publisher_data import DATA, text_name
+
+PAPERS = {}
 
 
-def read(doi):
-    path = DIRECTORY / (hashlib.sha256(doi.encode()).hexdigest() + ".json.gz")
-    if not path.is_file():
-        return {"doi": doi, "main_text": "", "supplements": []}
-    with gzip.open(path, "rt") as stream:
+def configure(papers):
+    global PAPERS
+    PAPERS = {p["pmcid"]: p for p in papers.values() if p["provenance"].get("has_full_text")}
+
+
+def read(paper):
+    with gzip.open(DATA / text_name(paper["pmcid"]), "rt") as stream:
         data = json.load(stream)
-    if data.get("doi") != doi or set(data) - {"doi", "main_text", "supplements"}:
-        raise ValueError("Unexpected publisher text cache")
-    if any(set(item) != {"name", "text"} for item in data.get("supplements", [])):
+    if data.get("doi") != paper["doi"] or set(data) != {"doi", "main_text", "supplements"}:
+        raise ValueError("Unexpected publisher text")
+    if any(set(item) != {"name", "text"} for item in data["supplements"]):
         raise ValueError("Unexpected publisher text fields")
     return data

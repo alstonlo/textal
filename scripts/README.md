@@ -11,7 +11,7 @@ pixi run snakemake -s scripts/Snakefile -n                   # what would run
 pixi run snakemake -s scripts/Snakefile -j1 all              # the corpus
 pixi run snakemake -s scripts/Snakefile -j1 plot_extraction  # the extraction figure
 pixi run snakemake -s scripts/Snakefile -j1 example          # the README's example record (needs Chrome)
-pixi run snakemake -s scripts/Snakefile -j1 assets           # the tables of the website
+pixi run snakemake -s scripts/Snakefile -j1 release          # the dataset of the website
 ```
 
 `runs/` holds the scripts that make the data, `analysis/` those that only read it. The analysis

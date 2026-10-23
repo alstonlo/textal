@@ -127,6 +127,9 @@ def main():
                 f"/api/cif-models/{pmcid}/{name}", out / "api" / "cif-models" / pmcid / name, links
             ):
                 counts["3D models"] += 1
+    for pmcid in web.publisher_text.PAPERS:
+        save("/api/paper-text/" + pmcid, out / "api" / "paper-text" / pmcid)
+        counts["texts"] += 1
     counts["entries"] = len(web.ENTRIES)
     print(json.dumps(counts, indent=2))
 

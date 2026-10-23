@@ -46,7 +46,7 @@
       {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} on {{ x.extracted_at|extraction_date }}.</p>{% endif %}
       {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Experimental section of the Acta E article</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
     </div>
-    <div class="paper" data-doi="{{ e.doi }}">
+    <div class="paper" data-doi="{{ e.doi }}"{% if paper.provenance.get("has_full_text") %} data-text="{{ root }}/api/paper-text/{{ paper.pmcid }}"{% endif %}>
       <h2>The paper</h2>
       <p class="paper-title">{{ paper.title }}</p>
       <p class="muted small paper-citation">{{ paper.journal }} · {{ paper.year or 'Year unknown' }}. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Read at publisher ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"

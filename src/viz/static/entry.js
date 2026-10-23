@@ -53,11 +53,12 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
     host.scrollTop = 0;
   }
   try {
-    const response = await fetch(
-      ROOT + "/api/paper-text?doi=" + encodeURIComponent(pane.dataset.doi),
-    );
-    if (!response.ok) throw Error("Text unavailable");
-    const data = await response.json();
+    let data = {};
+    if (pane.dataset.text) {
+      const response = await fetch(pane.dataset.text);
+      if (!response.ok) throw Error("Text unavailable");
+      data = await response.json();
+    }
     if (data.main_text)
       docs.push({ name: "Article", text: data.main_text, main: true });
     for (const file of data.supplements || [])
