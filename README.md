@@ -30,14 +30,14 @@ pixi install
 
 ### Quickstart
 
-The dataset is uploaded to Hugging Face at [alstonlo/textal-data](https://huggingface.co/datasets/alstonlo/textal-data). Download and unpack the dataset into `data/textal/` using:
+The dataset is uploaded to [Hugging Face](https://huggingface.co/datasets/alstonlo/textal-data). Download and unpack the dataset into `data/textal/` using:
 
 ```bash
 pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir data/textal
 cd data/textal && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar
 ```
 
-Launch the local web explorer for the TEXtal data:
+View the data through the [Explorer](https://huggingface.co/spaces/alstonlo/textal) or launch one locally:
 
 ```bash
 pixi run web --port 8000
