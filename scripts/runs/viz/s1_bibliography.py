@@ -22,6 +22,14 @@ def clean(value):
     return html.unescape(re.sub("<[^>]*>", "", value or "")).strip()
 
 
+def format_journal(name):
+    if not name:
+        return ""
+    s = re.sub(r"([,:;])(?=[^\s])", r"\1 ", name)
+    s = re.sub(r"\.(?=[A-Za-z])", r". ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def request(url):
     for attempt in range(3):
         try:
@@ -54,8 +62,9 @@ def europe_batch(dois):
         found[doi] = {
             "doi": doi,
             "title": clean(record.get("title")) or doi,
-            "journal": clean(journal.get("title") or record.get("journalTitle"))
-            or "Journal unavailable",
+            "journal": format_journal(
+                clean(journal.get("title") or record.get("journalTitle")) or "Journal unavailable"
+            ),
             "year": int(year) if year.isdigit() else None,
             "pmcid": record.get("pmcid"),
             "source": "Europe PMC article bibliography",
@@ -93,7 +102,9 @@ def crossref(doi):
     return doi, {
         "doi": doi,
         "title": clean((record.get("title") or [doi])[0]),
-        "journal": clean((record.get("container-title") or ["Journal unavailable"])[0]),
+        "journal": format_journal(
+            clean((record.get("container-title") or ["Journal unavailable"])[0])
+        ),
         "year": parts[0][0] if parts[0] else None,
         "pmcid": None,
         "source": "Publisher-deposited Crossref bibliography",

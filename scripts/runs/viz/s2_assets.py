@@ -19,7 +19,7 @@ from pathlib import Path
 import polars as pl
 
 from dataset.extraction_prompt import ENTRY_FIELDS
-from viz.publisher_data import licence, text_name
+from viz.publisher_data import format_journal, licence, text_name
 
 FIELDS = (
     "synthesis",
@@ -374,7 +374,7 @@ def build(
             "pmcid": pmcid,
             "doi": doi,
             "title": raw.get("article_title") or doi,
-            "journal": raw.get("journal") or "Acta Crystallographica E",
+            "journal": format_journal(raw.get("journal") or "Acta Crystallographica E"),
             "year": raw.get("year"),
             "authors": names,
             "paragraphs": [
@@ -455,7 +455,7 @@ def build(
                 "pmcid": pmcid,
                 "doi": doi,
                 "title": bib.get("title") or doi,
-                "journal": bib.get("journal") or "Journal unavailable",
+                "journal": format_journal(bib.get("journal") or "Journal unavailable"),
                 "year": bib.get("year"),
                 "authors": names,
                 "paragraphs": paragraphs,

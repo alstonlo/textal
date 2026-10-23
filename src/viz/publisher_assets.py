@@ -11,6 +11,8 @@ import math
 import re
 import tarfile
 import threading
+import tempfile
+from pathlib import Path
 from urllib.parse import quote, urlsplit
 
 import gemmi
@@ -20,15 +22,30 @@ from viz.publisher_data import DATA, package_name
 PAPERS = {}
 MODEL_LIMIT = threading.Semaphore(2)
 THUMB_VERSION = 5
+CIF_INDEX = {}
+CIF_INDEX_DIRTY = False
+CIF_INDEX_LOCK = threading.Lock()
+
+
+def cif_index_path():
+    return DATA / ".cache" / "textal" / "cif-index-v1.json"
 
 
 def configure(papers):
-    global PAPERS
+    global PAPERS, CIF_INDEX, CIF_INDEX_DIRTY
     PAPERS = {
         p["pmcid"]: p
         for p in papers.values()
         if p.get("pmcid") and p.get("provenance", {}).get("has_publisher_package", True)
     }
+    try:
+        CIF_INDEX = json.loads(cif_index_path().read_text())
+        if not isinstance(CIF_INDEX, dict):
+            CIF_INDEX = {}
+    except (OSError, ValueError):
+        CIF_INDEX = {}
+    CIF_INDEX_DIRTY = False
+    has_cif.cache_clear()
     package.cache_clear()
     thumbnail.cache_clear()
 
@@ -80,6 +97,69 @@ def package(pmcid):
                 raise ValueError("Publisher file failed receipt verification")
             blobs[f["cache_name"]] = blob
     return data, blobs
+
+
+@functools.lru_cache(maxsize=None)
+def has_cif(pmcid):
+    """Whether the local publisher package contains a listed CIF file."""
+    if pmcid not in PAPERS:
+        return False
+    global CIF_INDEX_DIRTY
+    try:
+        stat = (DATA / package_name(pmcid)).stat()
+    except OSError:
+        return False
+    signature = [stat.st_mtime_ns, stat.st_size, PAPERS[pmcid]["doi"]]
+    cached = CIF_INDEX.get(pmcid)
+    if (
+        isinstance(cached, list)
+        and len(cached) == 2
+        and cached[0] == signature
+        and isinstance(cached[1], bool)
+    ):
+        return cached[1]
+    result = _package_has_cif(pmcid)
+    with CIF_INDEX_LOCK:
+        CIF_INDEX[pmcid] = [signature, result]
+        CIF_INDEX_DIRTY = True
+    return result
+
+
+def _package_has_cif(pmcid):
+    try:
+        # Name-based extractfile/getmember first scans the entire compressed archive.
+        # Publisher packages put the manifest first: stream only as far as the CIF.
+        with tarfile.open(DATA / package_name(pmcid), mode="r|gz") as tar:
+            names = None
+            for member in tar:
+                if member.name == "manifest.json" and member.isfile():
+                    manifest = validate_manifest(json.load(tar.extractfile(member)), pmcid)
+                    names = {f["cache_name"] for f in manifest["cifs"]}
+                    if not names:
+                        return False
+                elif names and member.name in names and member.isfile():
+                    return True
+            return False
+    except (OSError, tarfile.TarError, ValueError, KeyError, TypeError):
+        return False
+
+
+def save_cif_index():
+    """Keep availability across server restarts; changed package signatures are rechecked."""
+    global CIF_INDEX_DIRTY
+    with CIF_INDEX_LOCK:
+        if not CIF_INDEX_DIRTY:
+            return
+        try:
+            path = cif_index_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as out:
+                json.dump(CIF_INDEX, out)
+                temporary = out.name
+            Path(temporary).replace(path)
+            CIF_INDEX_DIRTY = False
+        except OSError:
+            pass  # Read-only datasets still work using the in-memory cache.
 
 
 def public_manifest(pmcid):

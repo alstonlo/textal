@@ -9,7 +9,7 @@
     <div class="entry-kicker"><span class="refcode">{{ e.id }}</span><span class="status-pill {{ x.status }}">Extraction {{ x.status|replace('_', ' ') }}</span></div>
     <h1>{{ e.name }}</h1>
     <p class="small muted name-source">{{ e.name_source }}</p>
-    <p class="facts muted">{{ paper.journal }} · {{ paper.year or 'Year unknown' }} · <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">{{ e.doi }} ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
+    <p class="facts muted">{{ paper.journal|journal_spaces }} · {{ paper.year or 'Year unknown' }} · <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">{{ e.doi }} ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
     target="_blank"
     rel="noopener">{{ paper.pmcid }} ↗</a>{% endif %} · <a href="https://www.ccdc.cam.ac.uk/structures/Search?Ccdcid={{ e.id }}&amp;DatabaseToSearch=Published"
     target="_blank"
@@ -50,14 +50,14 @@
       <h2>The paper</h2>
       <p class="paper-title">{{ paper.title }}</p>
       {% if paper.authors %}<p class="muted small paper-authors">{{ paper.authors|join(", ") }}</p>{% endif %}
-      <p class="muted small paper-citation">{{ paper.journal }} · {{ paper.year or 'Year unknown' }}. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Read at publisher ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
+      <p class="muted small paper-citation">{{ paper.journal|journal_spaces }} · {{ paper.year or 'Year unknown' }}. <a href="https://doi.org/{{ e.doi }}" target="_blank" rel="noopener">Read at publisher ↗</a>{% if paper.pmcid %} · <a href="https://pmc.ncbi.nlm.nih.gov/articles/{{ paper.pmcid }}/"
     target="_blank"
     rel="noopener">PMC ↗</a>{% endif %}</p>
       <label class="paper-document" hidden>
         Document
         <select id="paper-document" aria-label="Paper document"></select>
       </label>
-      <p class="muted small paper-status" id="paper-status" role="status">Loading publisher text…</p>
+      {% if paper.provenance.get("has_full_text") %}<p class="muted small paper-status" id="paper-status" role="status">Loading publisher text…</p>{% else %}<p class="muted small paper-status" id="paper-status" role="status" hidden></p>{% endif %}
       <div class="paper-text" id="paper-text"><h3>Publisher excerpts</h3>{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">The article text is not stored here. Follow the DOI above to read it.</p>{% endfor %}</div>
       <details class="license-note"><summary>Publisher licence & bibliography sources</summary><p>{{ paper.provenance.bibliography_source }}{% if paper.provenance.get("bibliography_url") %} · <a href="{{ paper.provenance.bibliography_url }}"
     target="_blank"

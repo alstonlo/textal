@@ -2,10 +2,44 @@
 // marks the form with `data-static`, so the search runs here instead.
 const form = document.querySelector("form.tools");
 const hasCif = form.querySelector("[data-cif]");
-hasCif.addEventListener("click", () => {
-  form.cif.value = form.cif.value === "1" ? "0" : "1";
-  form.requestSubmit();
+const updateCifButton = () => {
+  const pressed = form.cif.value === "1";
+  hasCif.classList.toggle("on", pressed);
+  hasCif.setAttribute("aria-pressed", String(pressed));
+};
+hasCif.addEventListener("click", async () => {
+  const previous = form.cif.value;
+  form.cif.value = previous === "1" ? "0" : "1";
+  updateCifButton();
+  if (form.hasAttribute("data-static")) {
+    form.requestSubmit();
+    return;
+  }
+  const url = new URL(form.action, location.href);
+  url.search = new URLSearchParams(new FormData(form));
+  hasCif.disabled = true;
+  form.setAttribute("aria-busy", "true");
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw Error("Could not filter entries");
+    const page = new DOMParser().parseFromString(await response.text(), "text/html");
+    for (const selector of [".results-line", ".publisher-tiles", ".empty-state"])
+      document.querySelector(selector).replaceWith(page.querySelector(selector));
+    document.querySelector(".pagination")?.remove();
+    const pagination = page.querySelector(".pagination");
+    if (pagination) document.querySelector(".empty-state").after(pagination);
+    history.pushState(null, "", url);
+  } catch (error) {
+    form.cif.value = previous;
+    updateCifButton();
+    document.querySelector(".results-line").textContent =
+      "Could not update results. Please try again.";
+  } finally {
+    hasCif.disabled = false;
+    form.removeAttribute("aria-busy");
+  }
 });
+window.addEventListener("popstate", () => location.reload());
 if (form.hasAttribute("data-static")) {
   const tiles = [...document.querySelectorAll(".tile")];
   const grid = tiles[0]?.parentElement;
@@ -32,7 +66,7 @@ if (form.hasAttribute("data-static")) {
     }
     line.textContent = `${shown.length.toLocaleString()} matching entries`;
     empty.hidden = shown.length > 0;
-    hasCif.classList.toggle("on", form.cif.value === "1");
+    updateCifButton();
   };
   const params = new URLSearchParams(location.search);
   for (const k of ["q", "journal", "status", "sort"])

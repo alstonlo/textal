@@ -30,3 +30,11 @@ class PublisherNamesTests(unittest.TestCase):
 
     def test_markup_is_displayed_as_chemical_text(self):
         self.assertEqual(crystal_name(record("Cu<sub>2</sub> &amp; ligand"))[0], "Cu2 & ligand")
+
+    def test_journal_abbreviations_have_spaces(self):
+        from viz.publisher_data import format_journal
+
+        self.assertEqual(format_journal("Chem.Mater."), "Chem. Mater.")
+        self.assertEqual(format_journal("Angew.Chem.,Int.Ed."), "Angew. Chem., Int. Ed.")
+        self.assertEqual(format_journal("J.Am.Chem.Soc."), "J. Am. Chem. Soc.")
+        self.assertEqual(format_journal("Inorg.Chem."), "Inorg. Chem.")

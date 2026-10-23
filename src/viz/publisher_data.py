@@ -4,6 +4,8 @@ Any table with a column this module does not know is refused."""
 
 import json
 import os
+import re
+from collections import Counter
 from pathlib import Path
 
 import polars as pl
@@ -71,9 +73,21 @@ def text_name(pmcid):
     return "texts/" + pmcid[-2:] + "/" + pmcid + ".json.gz"
 
 
+def format_journal(name: str) -> str:
+    """Format compact journal abbreviations with spaces (e.g. Chem.Mater. -> Chem. Mater.)."""
+    if not name:
+        return ""
+    # Add space after comma, colon, semicolon if not followed by whitespace
+    s = re.sub(r"([,:;])(?=[^\s])", r"\1 ", name)
+    # Add space after dot if followed by a letter (e.g. Chem.Mater. -> Chem. Mater.)
+    s = re.sub(r"\.-(?=[A-Za-z])", ". ", s)
+    s = re.sub(r"\.(?=[A-Za-z(])", r". ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
 def load_public_data():
     snapshot = json.loads((DATA / "snapshot.json").read_text())
-    if snapshot.get("schema") != "publisher-only-v3":
+    if snapshot.get("schema") not in {"publisher-only-v2", "publisher-only-v3"}:
         raise ValueError(
             f"{DATA} holds an older version of the dataset. Download the current one with"
             " `pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir"
@@ -94,10 +108,14 @@ def load_public_data():
         raise ValueError("Unexpected public snapshot fields")
     entry_table = pl.read_parquet(DATA / "entries.parquet")
     paper_table = pl.read_parquet(DATA / "papers.parquet")
+    # The released v2 tables predate the publisher author list.
+    if snapshot["schema"] == "publisher-only-v2" and set(paper_table.columns) == PAPER_COLUMNS - {"authors_json"}:
+        paper_table = paper_table.with_columns(pl.lit("[]").alias("authors_json"))
     if set(entry_table.columns) != ENTRY_COLUMNS or set(paper_table.columns) != PAPER_COLUMNS:
         raise ValueError("Unexpected public columns; refusing an unreviewed schema.")
     papers = {}
     for p in paper_table.to_dicts():
+        p["journal"] = format_journal(p.get("journal") or "")
         for key in ("authors", "paragraphs", "sections", "licenses", "provenance"):
             p[key] = json.loads(p.pop(key + "_json"))
         if set(p["provenance"]) - {
@@ -120,6 +138,8 @@ def load_public_data():
             if lic.get("url") and not lic["url"].startswith(("http://", "https://")):
                 lic["url"] = None
         papers[p["paper_id"]] = p
+    # Build filter options from the same normalized names used by entries.
+    snapshot["journals"] = dict(sorted(Counter(p["journal"] for p in papers.values()).items()))
     entries = []
     for e in entry_table.to_dicts():
         x = json.loads(e.pop("extraction_json"))

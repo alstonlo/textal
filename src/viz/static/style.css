@@ -211,7 +211,7 @@ footer a:hover {
 .hero .lead {
   margin-top: 20px;
   color: var(--muted);
-  max-width: 46ch;
+  max-width: 54ch;
 }
 .button {
   display: inline-block;
@@ -348,6 +348,11 @@ footer a:hover {
 }
 .page-head .muted {
   margin-top: 12px;
+}
+.explorer-subtitle {
+  max-width: none;
+  white-space: nowrap;
+  overflow-x: auto;
 }
 .tools {
   display: flex;
@@ -960,7 +965,7 @@ footer a:hover {
   font-weight: 500;
 }
 .data-disclaimer p {
-  max-width: 90ch;
+  max-width: 100ch;
   line-height: 1.7;
 }
 /* Keep the original main reading width and type scale. */
@@ -1096,11 +1101,98 @@ footer a:hover {
   }
 }
 
-.name-source {
-  margin: -8px 0 20px;
+.entry-head .name-source {
+  margin: 12px 0 0;
+  font-size: 12px;
 }
 .strip-item span,
 .tile-name,
 .entry-head h1 {
   overflow-wrap: anywhere;
+}
+
+/* A full search row keeps the filters aligned at every reading width. */
+.explorer-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr) minmax(0, 1fr) auto auto auto;
+  gap: 10px;
+  padding: 20px;
+  background: var(--soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.explorer-tools input[type="search"] {
+  grid-column: 1 / -1;
+}
+.explorer-tools select,
+.explorer-tools .chip {
+  height: 40px;
+  min-width: 0;
+}
+.explorer-tools select[name="journal"] {
+  width: 100%;
+  max-width: none;
+}
+.explorer-tools .chip {
+  justify-content: center;
+  white-space: nowrap;
+}
+.chip:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.explorer-tools[aria-busy="true"] ~ .publisher-tiles {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.publisher-card .tile-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.publisher-card .tile-fact {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.publisher-card .card-meta {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.publisher-card .card-link {
+  padding-top: 8px;
+}
+.entry-head .facts {
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.paper-authors {
+  margin-top: 10px;
+  line-height: 1.7;
+}
+.paper-text {
+  scrollbar-gutter: stable;
+}
+@media (max-width: 900px) {
+  .explorer-tools {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .explorer-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding: 14px;
+    gap: 10px;
+  }
+  .explorer-tools select[name="journal"] {
+    grid-column: 1 / -1;
+  }
+  .publisher-card .status-pill {
+    white-space: normal;
+  }
+  .pagination {
+    gap: 12px;
+    flex-wrap: wrap;
+  }
 }

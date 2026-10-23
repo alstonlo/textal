@@ -74,8 +74,8 @@ window.addEventListener("pagehide", () => PaperMedia.dispose());
       select.onchange = draw;
       draw();
     } else {
-      status.textContent =
-        "Only excerpts are shown; the full article text is not stored here.";
+      status.hidden = true;
+      status.textContent = "";
       highlight();
     }
   } catch {

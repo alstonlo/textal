@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from viz import publisher_assets, publisher_text
-from viz.publisher_data import DATA, licence, load_public_data
+from viz.publisher_data import DATA, format_journal, licence, load_public_data
 
 HERE = Path(__file__).parent
 INK, MUTED, GRID = "#111111", "#6B6B68", "#E5E5E3"
@@ -211,6 +211,7 @@ templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.globals["root"] = ""
 templates.env.globals["static_site"] = False
 templates.env.globals["thumb_version"] = publisher_assets.THUMB_VERSION
+templates.env.globals["has_publisher_cif"] = publisher_assets.has_cif
 PAGE_SIZE = 48
 
 
@@ -222,6 +223,8 @@ def extraction_date(value):
 
 
 templates.env.filters["extraction_date"] = extraction_date
+templates.env.filters["journal_spaces"] = format_journal
+templates.env.filters["format_journal"] = format_journal
 
 
 @app.middleware("http")
@@ -254,6 +257,7 @@ def explore(
     journal: str = "",
     cif: int = 1,
 ):
+    journal = format_journal(journal)
     words = q.casefold().split()
     found = [
         e
@@ -261,10 +265,11 @@ def explore(
         if all(w in SEARCH[e["id"]] for w in words)
         and (not status or e["extraction"]["status"] == status)
         and (not journal or e["paper"]["journal"] == journal)
-        and (not cif or e["paper"]["provenance"].get("has_publisher_package", True))
+        and (not cif or publisher_assets.has_cif(e["pmcid"]))
     ]
     if sort == "year":
         found.sort(key=lambda e: (e["paper"]["year"] or 0, e["id"]), reverse=True)
+    publisher_assets.save_cif_index()
     total = len(found)
     pages = max(1, math.ceil(total / PAGE_SIZE))
     page = max(1, min(page, pages))

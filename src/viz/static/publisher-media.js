@@ -32,7 +32,7 @@ window.PaperMedia = (() => {
       abort = new AbortController(),
       state = { root, abort, paper, ref, frame: null };
     current = state;
-    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">CIFs and chemical schemes from the publisher’s article package. They belong to the whole paper, so no structure block is matched to this refcode automatically.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
+    root.innerHTML = `<section class="paper-media-section"><div class="media-section-head"><div><span class="small-label">PUBLISHER ASSETS · PMC OA</span><h3>Crystal & chemical scheme</h3></div><span class="media-asset-status" role="status">Loading publisher assets…</span></div><p class="media-scope">CIFs and chemical schemes from the publisher.</p><div class="media-panels"><section class="crystal-panel"><h4>Publisher CIF</h4><div class="crystal-body"><p class="media-empty">Loading CIF files…</p></div></section><section class="figure-panel"><h4>Chemical scheme</h4><div class="figure-body"><p class="media-empty">Loading publisher chemical schemes…</p></div></section></div><details class="media-provenance"><summary>Publisher file provenance</summary><div class="media-provenance-body"></div></details></section>`;
     const status = root.querySelector(".media-asset-status");
     if (!paper.pmcid) {
       status.textContent = "No PMC archive link";
@@ -81,7 +81,7 @@ window.PaperMedia = (() => {
         '<p class="media-empty">The package holds no CIF with atomic coordinates.</p>';
       return;
     }
-    host.innerHTML = `<div class="tools"${files.length > 1 ? "" : " hidden"}><select class="cif-file" aria-label="CIF file">${files.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div><iframe class="crystal-frame" title="Interactive publisher CIF crystal viewer"></iframe><div class="crystal-downloads"></div><p class="media-hint">The CIF belongs to the paper, so pick the structure block that matches this refcode when the file holds several compounds or forms. Bonds are inferred from the coordinates.</p>`;
+    host.innerHTML = `<div class="tools"${files.length > 1 ? "" : " hidden"}><select class="cif-file" aria-label="CIF file">${files.map((f, i) => `<option value="${i}">${esc(f.name)}</option>`).join("")}</select></div><iframe class="crystal-frame" title="Interactive publisher CIF crystal viewer"></iframe><div class="crystal-downloads"></div><p class="media-hint">The publisher CIF may contain multiple structures, so pick the structure block that matches the desired refcode. Bonds are inferred from the coordinates.</p>`;
     const choice = host.querySelector(".cif-file");
     choice.value = Math.min(
       selections.get(state.paper.pmcid) || 0,

@@ -132,7 +132,7 @@ var ROOT = document.querySelector('meta[name="root"]').content;
       if (!response.ok) throw Error(data.error || "CIF parsing failed");
       const toggle = (c, label, pressed) =>
         `<button type="button" class="chip ${pressed ? "on " : ""}${c}" aria-pressed="${pressed}">${label}</button>`;
-      root.innerHTML = `<div class="tools"><select class="cif-block" aria-label="Structure block"${data.blocks.length > 1 ? "" : " hidden"}>${data.blocks.map((b, i) => `<option value="${i}">data_${esc(b.name)}</option>`).join("")}</select><select class="crystal-mode" aria-label="View"><option value="cell">Unit cell packing</option><option value="asu">Asymmetric unit</option></select><div class="chips">${toggle("crystal-shell", "Surroundings", false)}${toggle("crystal-h", "Hydrogens", true)}${toggle("crystal-cell", "Cell axes", true)}</div><div class="chips count">${toggle("crystal-spin", "Rotate", false)}<button type="button" class="chip crystal-reset">Reset view</button></div></div><div class="crystal-canvas" role="img" aria-label="Interactive crystal model: drag to rotate, scroll to zoom"></div><div class="viewer-foot"><p class="muted small crystal-info" role="status"></p><p class="muted small num crystal-cell-info"></p></div><p class="media-hint">Drag to rotate, scroll to zoom. The cell is drawn with its a, b and c axes in red, green and blue.</p>`;
+      root.innerHTML = `<div class="tools"><select class="cif-block" aria-label="Structure block"${data.blocks.length > 1 ? "" : " hidden"}>${data.blocks.map((b, i) => `<option value="${i}">data_${esc(b.name)}</option>`).join("")}</select><select class="crystal-mode" aria-label="View"><option value="cell">Unit cell packing</option><option value="asu">Asymmetric unit</option></select><div class="chips">${toggle("crystal-shell", "Surroundings", false)}${toggle("crystal-h", "Hydrogens", true)}${toggle("crystal-cell", "Cell axes", true)}</div><div class="chips count">${toggle("crystal-spin", "Rotate", false)}<button type="button" class="chip crystal-reset">Reset view</button></div></div><div class="crystal-canvas" role="img" aria-label="Interactive crystal model: drag to rotate, scroll to zoom"></div><div class="viewer-foot"><p class="muted small crystal-info" role="status"></p><p class="muted small num crystal-cell-info"></p></div>`;
       viewer = $3Dmol.createViewer(el("crystal-canvas"), {
         backgroundColor: "#ffffff",
         antialias: true,
@@ -144,8 +144,9 @@ var ROOT = document.querySelector('meta[name="root"]').content;
         ["crystal-shell", style],
       ])
         el(c).onclick = () => {
-          el(c).classList.toggle("on", !on(c));
-          el(c).setAttribute("aria-pressed", String(on(c)));
+          const pressed = !on(c);
+          el(c).classList.toggle("on", pressed);
+          el(c).setAttribute("aria-pressed", String(pressed));
           after();
         };
       el("crystal-reset").onclick = () => {
