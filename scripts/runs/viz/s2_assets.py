@@ -73,13 +73,27 @@ def paper_sources(pmc, folder):
     text = {}
     if (parsed / "paper.md").is_file():
         text = {
-            "main_text": (parsed / "paper.md").read_text(),
+            "main_text": markdown(parsed / "paper.md") or "",
             "supplements": [
-                {"name": f.name, "text": f.read_text()}
+                {"name": f.name, "text": t}
                 for f in sorted(parsed.glob("supplementary*.md"))
+                if (t := markdown(f)) is not None
             ],
         }
     return text, authors(xml) if xml.is_file() else []
+
+
+def markdown(path):
+    """The text of a Markdown file, or None if it is not UTF-8 text.
+
+    About ten plain-text supplements are in other encodings (or are binary files); they are left
+    out rather than guessed at, since a wrong guess would alter the text.
+    """
+    try:
+        text = path.read_bytes().decode()
+    except UnicodeDecodeError:
+        return None
+    return None if "\x00" in text else text
 
 
 def write_text(output, paper, text):

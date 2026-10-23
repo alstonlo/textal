@@ -2,15 +2,16 @@
 
 import json
 import math
+import mimetypes
 import threading
 from datetime import datetime
 from pathlib import Path
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import plotly.graph_objects as go
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -330,7 +331,7 @@ def paper_assets(pmcid: str):
     except (ValueError, RuntimeError, OSError):
         return JSONResponse(
             {
-                "error": "The publisher files are unavailable or do not match their recorded hashes. Retry after reconnecting the archive."
+                "error": "The publisher files are missing from the dataset or do not match their recorded hashes."
             },
             status_code=503,
         )
@@ -354,14 +355,15 @@ def cif_models(pmcid: str, name: str):
 @app.get("/paper-assets/{pmcid}/{name}")
 def paper_asset(pmcid: str, name: str):
     try:
-        path, asset = publisher_assets.asset_file(pmcid, name)
+        blob, asset = publisher_assets.asset_file(pmcid, name)
     except (ValueError, RuntimeError, OSError):
         raise HTTPException(404, "Unknown publisher asset") from None
-    return FileResponse(
-        path,
-        filename=Path(asset["name"]).name,
-        content_disposition_type="inline",
+    filename = Path(asset["name"]).name
+    return Response(
+        blob,
+        media_type=mimetypes.guess_type(filename)[0] or "application/octet-stream",
         headers={
+            "Content-Disposition": "inline; filename*=utf-8''" + quote(filename),
             "X-Content-Type-Options": "nosniff",
             "Content-Security-Policy": "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:",
         },
@@ -378,7 +380,7 @@ def publisher_thumbnail(pmcid: str):
     if pmcid not in publisher_assets.PAPERS:
         raise HTTPException(404, "Unknown publisher paper")
     try:
-        return FileResponse(publisher_assets.thumbnail(pmcid), media_type="image/svg+xml")
+        return Response(publisher_assets.thumbnail(pmcid), media_type="image/svg+xml")
     except Exception:  # noqa: BLE001 -- never expose parser internals or private paths
         # A missing publisher preview must never fall back to a CSD depiction.
         return Response(

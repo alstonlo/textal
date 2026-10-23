@@ -90,10 +90,11 @@ pixi run snakemake -s scripts/Snakefile -j1 example           # the example abov
 **Data.** The dataset is on Hugging Face at
 [alstonlo/textal-data](https://huggingface.co/datasets/alstonlo/textal-data): `entries.parquet`
 (one row per CSD refcode with its extracted record), `papers.parquet` (one row per paper: its
-bibliography, licence and the quoted snippets) and `files/<NN>/<PMCID>.tar.gz` (the CIFs and
-chemical schemes the publisher supplied with each paper, `NN` being the last two digits of the
-PMCID). The tables hold nothing from the CSD but refcodes and DOIs. Download it (about 3 GB)
-into `data/textal/`:
+bibliography, authors, licence and the quoted snippets), `texts/<NN>/<PMCID>.json.gz` (the
+paper's text and supplementary documents as Markdown) and `files/<NN>/<PMCID>.tar.gz` (the CIFs
+and chemical schemes the publisher supplied with each paper), `NN` being the last two digits of
+the PMCID. Texts and files are included only for papers under a Creative Commons licence. The
+tables hold nothing from the CSD but refcodes and DOIs. Download it into `data/textal/`:
 
 ```bash
 pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir data/textal
@@ -101,14 +102,14 @@ pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir data/t
 
 **Website.** For each extracted entry, the website shows the crystal structures of its paper
 (drawn from the publisher's CIFs), its chemical scheme and the record, with the quote behind each
-paragraph; it shows the text of the CC BY papers only. It runs on the downloaded dataset:
+paragraph, next to the paper's text. It reads only the downloaded dataset in `data/textal/` (set
+`TEXTAL_DATA` to read another folder), so it starts as soon as the download finishes:
 
 ```bash
 pixi run web --port 8000
 ```
 
-The tables are built from the corpus with `pixi run snakemake -s scripts/Snakefile -j1 tables`
-and the paper packages with `scripts/runs/viz/s3_release.py`.
+The dataset is built from the corpus with `pixi run snakemake -s scripts/Snakefile -j1 release`.
 
 ## About TEXtal
 
@@ -182,7 +183,8 @@ PDFs were not read, as they need OCR.
 ## Licence
 
 The CSD metadata is licensed by the CCDC and is not redistributed here, nor are tables built from
-it (the website's tables hold only refcodes and DOIs). Each paper
-keeps the licence given in its PMC record, and the Acta E files (CIFs and chemical schemes) the
-[terms of use](https://journals.iucr.org/services/termsofuse.html) of the IUCr; the website shows
-the text of the CC BY papers only.
+it: the dataset holds only refcodes and DOIs from the CSD, and the sentences of the extracted
+records that repeat the CSD metadata are removed. Each paper keeps its licence (that of its PMC
+copy, or for Acta E that of its XML). The dataset and the website include the text, CIFs and
+chemical schemes of a paper only if it is under a Creative Commons licence, and they credit
+each paper by its authors, title, journal and DOI.

@@ -14,16 +14,15 @@ from fastapi.testclient import TestClient
 
 # The website's modules read these when imported, which the builder already does.
 TEMP = tempfile.TemporaryDirectory()
-os.environ.update(
-    TEXTAL_DATA=str(Path(TEMP.name) / "assets"),
-    TEXTAL_PUBLISHER_CACHE=str(Path(TEMP.name) / "cache"),
-    TEXTAL_ASSET_SSH="0",
-)
+os.environ["TEXTAL_DATA"] = str(Path(TEMP.name) / "assets")
 
 ROOT = Path(__file__).resolve().parents[2]
 spec = importlib.util.spec_from_file_location("builder", ROOT / "scripts/runs/viz/s2_assets.py")
 builder = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(builder)
+spec = importlib.util.spec_from_file_location("release", ROOT / "scripts/runs/viz/s3_release.py")
+release = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(release)
 
 CIF = """data_I
 _cell_length_a 10
@@ -149,7 +148,7 @@ class PublisherSiteTests(unittest.TestCase):
             "pmcid": "PMC1234",
             "doi": "10.1107/test",
             "private": SECRET,
-            "package_path": "/project/rrg-aspuru/auhcheng/iucr_open_access_full_2026-10-21/packages/PMC1234.tar.gz",
+            "package_path": "packages/PMC1234.tar.gz",
             "cifs": [asset("0-publisher.cif", cls.raw)],
             "figures": [
                 asset("1-scheme1.png", b"publisher image bytes", "chemical_scheme"),
@@ -157,6 +156,9 @@ class PublisherSiteTests(unittest.TestCase):
             ],
         }
         (paper / "manifest.json").write_text(json.dumps(manifest))
+        from viz.publisher_data import package_name
+
+        release.pack(paper, cls.output / package_name("PMC1234"))
         from viz.app import app
 
         cls.client = TestClient(app)
@@ -271,9 +273,15 @@ class PublisherSiteTests(unittest.TestCase):
         self.assertNotIn(SECRET, response.text)
 
     def test_tampered_publisher_bytes_fail_verification(self):
+        from viz import publisher_assets
+        from viz.publisher_data import DATA, package_name
+
         path = self.cache / "PMC1234/0-publisher.cif"
+        target = DATA / package_name("PMC1234")
         try:
             path.write_bytes(b"tampered")
+            release.pack(path.parent, target)
+            publisher_assets.package.cache_clear()
             self.assertEqual(
                 self.client.get("/paper-assets/PMC1234/0-publisher.cif").status_code, 404
             )
@@ -282,6 +290,8 @@ class PublisherSiteTests(unittest.TestCase):
             )
         finally:
             path.write_bytes(self.raw)
+            release.pack(path.parent, target)
+            publisher_assets.package.cache_clear()
 
     def test_completed_snapshot_reloads_without_restarting(self):
         path = self.output / "snapshot.json"

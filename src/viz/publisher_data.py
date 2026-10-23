@@ -74,7 +74,11 @@ def text_name(pmcid):
 def load_public_data():
     snapshot = json.loads((DATA / "snapshot.json").read_text())
     if snapshot.get("schema") != "publisher-only-v3":
-        raise ValueError("Rebuild the dataset with s2_assets.py; older tables are unsupported.")
+        raise ValueError(
+            f"{DATA} holds an older version of the dataset. Download the current one with"
+            " `pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir"
+            " data/textal`, or rebuild it with `s2_assets.py`."
+        )
     if set(snapshot) - {
         "schema",
         "built_at",

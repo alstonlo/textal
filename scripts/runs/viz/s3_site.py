@@ -15,7 +15,8 @@ import polars as pl
 
 
 def subset_tables(data, refcodes, output):
-    """Writes the website tables restricted to `refcodes` (and their papers) into `output`."""
+    """Writes the website tables restricted to `refcodes` (and their papers) into `output`, with
+    links to the texts and publisher files of `data`."""
     entries = pl.read_parquet(data / "entries.parquet")
     entries = entries.filter(pl.col("id").is_in(refcodes))
     papers = pl.read_parquet(data / "papers.parquet")
@@ -46,6 +47,9 @@ def subset_tables(data, refcodes, output):
     entries.write_parquet(output / "entries.parquet")
     papers.write_parquet(output / "papers.parquet")
     (output / "snapshot.json").write_text(json.dumps(snapshot, indent=2))
+    for name in ("texts", "files"):
+        if not (output / name).is_symlink():
+            (output / name).symlink_to((data / name).resolve())
 
 
 def main():
@@ -53,7 +57,6 @@ def main():
     p.add_argument("--root", default="/textal", help="the path the site is served under")
     p.add_argument("--subset", type=Path, help="a Parquet table whose `id` column lists refcodes")
     p.add_argument("--data", type=Path, default=Path("data/textal"))
-    p.add_argument("--cache", type=Path, default=Path("data/publisher-cache"))
     p.add_argument("--output", type=Path, default=Path("data/site"))
     a = p.parse_args()
 
@@ -63,8 +66,6 @@ def main():
         refcodes = pl.read_parquet(a.subset)["id"].implode()
         subset_tables(a.data, refcodes, data)
     os.environ["TEXTAL_DATA"] = str(data.resolve())
-    os.environ["TEXTAL_PUBLISHER_CACHE"] = str(a.cache.resolve())
-    os.environ.pop("TEXTAL_ASSET_SSH", None)
 
     from fastapi.testclient import TestClient
 
