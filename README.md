@@ -132,7 +132,7 @@ Of the 45,066 entries in the extracted papers, the model returned a record for 4
 ### Next steps
 
 - **Extract more papers.** Extract the remaining 26,041 papers of the corpus and, with access from publishers, the cited papers outside PMC's open-access list.
-- **Make the extraction more robust and verifiable.** Read full papers as numbered sentences, as in the Acta E run, so that every quote is verbatim and can be checked against the paper.
+- **Make the extraction more robust and verifiable.** Use a second LLM as a verifier that reads each record next to its paper and checks that no data from the paper was changed in the record or left out of it.
 - **Use a more granular schema.** Derive fixed fields, such as solvent, method and temperature, from the topic paragraphs, or have an LLM propose the fields from the paragraphs (schema induction).
 - **Train models on the data.** Train models for text-conditioned CSP and crystallization condition prediction, and test whether the procedure improves predictions over the molecule alone.
 
