@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% set active = "home" %}
-{% set c = stats.counts %}
 {% block head %}
   <script src="https://cdn.plot.ly/plotly-4.1.1.min.js"></script>
 {% endblock %}
@@ -33,7 +32,7 @@
   </section>
   <section class="block collection-note">
     <h2>Publisher sources, across journals</h2>
-    <p class="muted">The entries come from Acta Crystallographica Section E (Acta E) and from the other journals in the extraction. Each entry pairs the extracted procedure with its paper, excerpts of the paper's text, and the publisher's CIF and chemical scheme where the archive holds them. A CIF belongs to the whole paper, so its structure blocks are not matched to individual refcodes automatically.</p>
+    <p class="muted">The entries come from open-access papers in PubMed Central (PMC). Most of these papers are from Acta Crystallographica Section E (Acta E), and the rest are from other journals. Each entry pairs the extracted procedure with its paper, excerpts of the paper's text, and the publisher's CIF and chemical scheme where the archive holds them. A CIF belongs to the whole paper, so its structure blocks are not matched to individual refcodes automatically.</p>
     <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Filter by journal in the Explorer.</p>
   </section>
   <section class="block">
@@ -42,15 +41,15 @@
     <p class="small muted">Licence labels come from the publisher records. A paper whose record names no licence is labelled Not indexed, and the less common labels are grouped under Other.</p>
     <div class="charts">
       <figure class="wide">
-        <figcaption><span class="key" style="--key: var(--bar)">Refcodes</span> and <span class="key" style="--key: var(--bar-warm)">papers</span> by publication year</figcaption>
+        <figcaption><span class="key" style="--key: var(--bar)">Refcodes</span><span class="key" style="--key: var(--bar-warm)">Papers</span></figcaption>
         <div class="plot" id="years"></div>
       </figure>
       <figure>
-        <figcaption>Journals of the papers</figcaption>
+        <figcaption>Paper Journals</figcaption>
         <div class="plot" id="journals"></div>
       </figure>
       <figure>
-        <figcaption>Licences of the {{ "{:,}".format(c.pmc_papers) }} papers</figcaption>
+        <figcaption>Paper Licences</figcaption>
         <div class="plot" id="licenses"></div>
       </figure>
     </div>

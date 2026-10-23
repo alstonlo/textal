@@ -96,7 +96,7 @@ def bars(counts: list[tuple[str, int]], other: str) -> dict:
     """A vertical bar chart of paper counts, one bar per name; the bar named `other` is grey."""
     labels = [JOURNAL_ALIASES.get(n, n) for n, _ in counts]
     traces = []
-    for colour in ("bar-warm", "bar-other"):
+    for colour in ("bar", "bar-other"):
         group = [
             (name, n, label)
             for (name, n), label in zip(counts, labels, strict=True)
