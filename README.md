@@ -2,218 +2,118 @@
 
 # TEXtal
 
-**A dataset of crystal structures paired with text-mined crystallization procedures and outcomes.**
+**Crystal structures paired with how they were made and grown.**
 
 <img src="docs/assets/record.png" width="800" alt="Crystal structure beside procedure fields and supporting quotes">
 
+*OSI Hackathon 2026*
+
 </div>
 
-TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization
-procedures and outcomes reported in their papers. We download these open-access papers from
-PubMed Central (PMC), convert them to Markdown, and use a large language model (LLM) to describe
-how each entry's compound was made and its crystals were grown. Each record includes quotes
-from the paper as evidence. The pairs support two tasks: text-conditioned crystal structure
-prediction (CSP), which predicts the crystal that a molecule forms under a written procedure, and
-condition generation, which predicts a procedure that yields a given crystal.
+TEXtal links the crystal structures of the Cambridge Structural Database (CSD) to the procedures
+and outcomes reported in their papers. For each CSD entry, a large language model (LLM) reads the
+open-access paper and writes a record of how the compound was made and how its crystals were
+grown, backed by quotes from the paper.
 
----
+## Why
 
-## Installation
+The same molecule can form different crystals (polymorphs, solvates or salts) depending on how
+it is crystallized. Crystal structure prediction (CSP) models such as
+[Clari](https://github.com/the-matter-lab/clari) predict the crystal from the molecule alone.
+They cannot take the procedure into account, nor say how to obtain a given crystal. This matters
+because the crystal form sets properties such as solubility, stability and how a drug is
+absorbed, and a chemist who wants a particular form needs to know how to make it.
 
-We use the [pixi](https://pixi.sh) dependency manager (Linux only).
+The CSD holds 1.4 million crystal structures but does not systematically record how they were
+grown. That knowledge is in the papers, written as free text in the experimental section or the
+supplementary information. Each paper reports it differently, with its own level of detail, and
+it is spread across many journals and decades of literature. Collecting it by hand does not
+scale. We found no public dataset that links crystallization procedures to crystal structures.
+LLMs can now read papers at this scale, which makes building one possible.
+
+TEXtal's records could train models for two tasks:
+
+- **Text-conditioned CSP:** predict the crystal from the molecule and a written procedure.
+- **Condition generation:** predict a procedure that yields a given crystal.
+
+## Approach
+
+1. **Find the papers.** The CSD entries cite 554,956 unique DOIs. Of these, 56,225 are in PubMed
+   Central (PMC), covering 121,147 CSD entries.
+2. **Download.** 54,961 open-access papers (203 GB) from PMC, with their full text and
+   supplementary documents.
+3. **Convert.** Papers and supplementary documents become Markdown.
+4. **Extract.** One LLM request per paper, with its text and its CSD entries. For each entry, the
+   model identifies the compound, rates its confidence in the match, and writes a short paragraph
+   per topic (synthesis, crystallization, characterization, solid form, and purpose and
+   properties), each backed by quotes. Acta E papers, which report one structure each, use their own
+   prompt. Paragraphs rather than fixed fields keep whatever the
+   paper reports, and structured fields can be derived from them later.
+5. **Browse.** A website shows corpus statistics and, for the CSD Drug Subset, each entry's 3D
+   unit cell, molecule, paper and record.
+
+<div align="center">
+<img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
+
+*Papers by year and journal. Acta Crystallographica Section E, which publishes one structure per
+paper, supplies the largest share of the corpus.*
+</div>
+
+## Results
+
+- **Corpus.** 54,961 papers and 23,215 supplementary documents in Markdown (3.3 GB). 74% of the
+  papers are under CC BY, so their text can be shared.
+  Two thirds report a single CSD entry, which makes matching paper and entry easy.
+- **Extraction.** As of 22 October, 52,786 CSD entries from 33,777 papers, in about six hours.
+  The model wrote a record for 99.3% of the entries and rated 97.8% of its matches high
+  confidence. Of the records, 97% describe the synthesis, 88% the crystallization, 63% the
+  characterization, 48% the purpose and properties and 44% the solid form, citing 576,257
+  quotes in total.
+
+## Next steps
+
+- Extract the rest of the corpus.
+- Derive structured fields from the paragraphs.
+- Add open-access papers from outside PMC.
+- Release the records of the CC BY papers as an open dataset.
+
+## Quickstart
+
+TEXtal uses [pixi](https://pixi.sh) (Linux) and needs a CCDC licence for the CSD metadata.
+Install the [CSD data](https://www.ccdc.cam.ac.uk/support-and-resources/csdsdownloads/), then:
 
 ```bash
-git clone https://github.com/alstonlo/clari-data-osi-hack.git
-cd clari-data-osi-hack
+git clone https://github.com/alstonlo/clari-data-osi-hack.git && cd clari-data-osi-hack
 pixi install
+pixi install -e csd   # CSD Python API, in its own env because it pins older NumPy, pandas and SciPy
 ```
 
-MinerU, the optical character recognition (OCR) tool for scanned PDFs, requires a GPU.
-Install it in its own environment:
-
-```bash
-pixi install -e ocr
-```
-
-## Usage
-
-### CSD Download
-
-The pipeline starts from `data/raw/csd_metadata.full.parquet`, which holds the metadata of every
-CSD entry, such as its refcode (entry identifier), compound name, journal and digital object
-identifier (DOI). Exporting this metadata requires a licence from the Cambridge Crystallographic
-Data Centre (CCDC), so it is not in this repository.
-
-To export it, first download and install the CSD data from the [CCDC downloads
-page](https://www.ccdc.cam.ac.uk/support-and-resources/csdsdownloads/). Then install the CSD
-Python API, which has its own environment because it pins older versions of NumPy, pandas and
-SciPy:
-
-```bash
-pixi install -e csd
-```
-
-Next, write your CCDC licence code to a file named `.env` at the repository root. The second line
-is needed only if the CCDC installer did not record the location of the CSD data in
-`~/.config/CCDC/CSD.ini`:
+Write your licence to `.env` at the repository root. The second line is needed only if
+`~/.config/CCDC/CSD.ini` does not record the location of the CSD data.
 
 ```bash
 CCDC_LICENSING_CONFIGURATION=la-code;<your-licence-code>
 CSD_DATA_DIRECTORY=<folder of the CSD data>
 ```
 
-Finally, export the metadata:
+Then run the pipeline. The download and the extraction resume if interrupted.
 
 ```bash
-pixi run -e csd python scripts/runs/csd/s0_metadata.py
+pixi run -e csd python scripts/runs/csd/s0_metadata.py   # CSD metadata -> data/raw/
+pixi run snakemake -s scripts/Snakefile -j1 all           # download + convert papers (~200 GB)
+
+export LITELLM_API_KEY=...                                # extraction runs via a LiteLLM proxy
+pixi run python -m dataset.extraction_stream --run data/runs/corpus
+# try it first on a sample: --sample 200 --run data/runs/pilot200
+
+pixi run snakemake -s scripts/Snakefile -j1 assets        # build the website tables
+pixi run web --port 8000                                  # http://localhost:8000
 ```
 
-### Build the corpus
-
-This command downloads the papers from PMC, converts them to Markdown and plots the figures of
-this README. The download takes several hours and about 200 GB of disk space. Rerunning an
-interrupted download resumes it.
-
-```bash
-pixi run snakemake -s scripts/Snakefile -j1 all
-```
-
-### Extract the procedures
-
-The extraction calls the model through a LiteLLM proxy and requires an API key. It writes
-`data/runs/<name>/extractions.parquet`, with one record per CSD entry. Rerunning a stopped run
-resumes it.
-
-```bash
-export LITELLM_API_KEY=...
-pixi run python -m dataset.extraction_stream --sample 200 --run data/runs/pilot200   # a sample
-pixi run python -m dataset.extraction_stream --run data/runs/corpus                  # every paper
-```
-
-### Website
-
-The website shows corpus statistics and the 293 entries of the CSD Drug Subset that are reported
-in open-access papers of Acta Crystallographica Section E. Each entry's page shows a 3D view of
-its unit cell (the repeating unit of a crystal), its molecule, its CSD metadata, its paper and its
-extracted record. To serve it at http://localhost:8000:
-
-```bash
-pixi run web --port 8000
-```
-
-The website reads only the tables in `src/viz/assets/`. Of these, only `stats.json` is in this
-repository, because the other tables hold CSD data. Building them requires the CSD metadata, the
-downloaded papers and the extracted records:
-
-```bash
-pixi run snakemake -s scripts/Snakefile -j1 assets
-```
-
-## About TEXtal
-
-The Cambridge Structural Database (CSD) holds 1.4 million crystal structures, but it does not
-systematically record how the crystals were grown; those procedures are described in the papers.
-TEXtal is an open pipeline that downloads the 54,961 open-access CSD papers from PubMed Central
-(PMC), converts them to Markdown, and uses a large language model (LLM) to write a record for
-each CSD entry: how the compound was made and how its crystals were grown, backed by verbatim
-quotes from the paper. These records can train models for text-conditioned crystal structure
-prediction (CSP) and for condition generation.
-
-In a first run, stopped before it finished, we extracted records for **51,300 CSD entries from
-32,792 papers**, including 26,281 papers of Acta Crystallographica Section E, in about six
-hours. The model found the compound for 99.4% of the entries and rated 97.9% of its matches high
-confidence; 88% of the records describe how the crystals were grown.
-
-### Why
-
-CSP models such as [Clari](https://github.com/the-matter-lab/clari) predict how a molecule packs
-into a crystal from the molecule alone. But the same molecule can form different crystals
-(polymorphs, solvates or salts) depending on how it is crystallized, and these models can neither
-take the crystallization procedure as input nor say which solvent, method and temperature produce
-a given crystal. Two tasks address this: in text-conditioned CSP, a model predicts the crystal
-from the molecule and a written procedure; in condition generation, it predicts the procedure
-from the target crystal. Both need crystallization procedures linked to crystal structures. The
-CSD has a `solvent` field, but it holds a single string with no method, temperature or time, and
-it is empty for 84% of entries. We found no public dataset that links small-molecule
-crystallization procedures to CSD entries.
-
-### Approach
-
-1. **Find the papers.** The CSD entries cite 554,956 unique DOIs. Of these, 56,225 are in PMC's
-   DOI list, covering 121,147 CSD entries. Most publisher sites block automated downloads,
-   but PMC's open-access storage bucket on Amazon Web Services (AWS) allows them.
-2. **Download.** The bucket contained 54,961 papers (203 GB). Every paper has its full text as
-   XML; 89% also have a PDF and 35% have supplementary documents. We check every file
-   against PMC's checksum.
-3. **Convert to Markdown.** Because the main text comes as XML, it needs no optical character
-   recognition (OCR); we convert it with pandoc. We convert supplementary PDFs with PyMuPDF4LLM,
-   which reads their embedded text. Scanned supplementary PDFs, present in 1.6% of papers,
-   require OCR with MinerU, which we have not run yet.
-4. **Extract.** We send one LLM request per paper, with the paper's Markdown and a table of its
-   CSD entries, including refcode, CCDC number, name and formula. For each entry, the model
-   names the compound in the paper and rates its confidence in that match as high, medium or
-   low. It then writes one short paragraph per topic: synthesis; crystallization;
-   characterization; solid form (such as a salt or hydrate); and purpose and properties. Every
-   filled paragraph requires at least one verbatim quote. We ask for paragraphs instead of fixed
-   fields (such as solvent, method and temperature) because we do not know in advance what the
-   papers report; the fixed fields can be derived from the paragraphs later. Acta E papers,
-   which report one structure each, use `gpt-5.6-luna` with a prompt anchored on that journal's
-   layout; all other papers use `gpt-6-luna`. Both run at reasoning effort `high`.
-5. **Show.** A website shows corpus statistics and, for the CSD Drug Subset, each entry's
-   unit cell, molecule, paper and extracted record.
-
-<figure>
-<img src="docs/assets/years.png" width="700" alt="Papers by year and journal">
-<figcaption>
-<strong>Figure 1.</strong> Downloaded papers by publication year, with colors indicating
-journals. Acta Crystallographica Section E, a journal that publishes one structure per paper,
-supplies 41% of the corpus; since 2015, most papers come from general chemistry journals.
-</figcaption>
-</figure>
-
-### Results
-
-- **The corpus.** The corpus has 54,961 papers and 23,215 supplementary documents in Markdown
-  (3.5 GB). Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can
-  be shared. Two thirds of the papers report a single CSD entry, which makes the match between
-  paper and entry easy.
-- **Extraction run.** We extracted 51,300 CSD entries from 32,792 papers: 27,273 entries from
-  26,281 Acta E papers, and 24,027 entries from 6,511 papers in other journals; 4,481 papers
-  also used their supplementary documents. The model wrote a record for 50,983 entries (99.4%);
-  for 280 it could not find the compound in the paper, 36 requests failed and 1 paper was
-  missing. It rated 50,002 matches high confidence, 779 medium and 305 low. Of the records,
-  97% describe the synthesis, 88% the crystallization, 63% the characterization, 48% the purpose
-  and properties and 44% the solid form; together they cite 556,022 quotes.
-- **Manual check of 10 papers.** The model matched all 23 CSD entries to the right compound:
-  18 through the CCDC number printed next to the compound's label (such as "3a"), 5 through the
-  paper's description. Of the 337 quotes, 27 differed from the paper, mostly in hyphenation or
-  letter case; one had a changed word.
-- **Reasoning effort.** At reasoning effort `high` (a setting for how long the model reasons
-  before answering), the model gave the same matches and core paragraphs as at `max` and ran
-  about 10 times faster, so we use `high`.
-
-<figure>
-<img src="docs/assets/downloads.png" width="700" alt="Paper licences and file availability">
-<figcaption>
-<strong>Figure 2.</strong> Downloaded papers by licence in the PMC record (left, counts) and file
-availability (right, percentages). Most papers are under CC BY. "TDM" (text and data mining)
-marks author manuscripts, which PMC lets others reuse; they usually have no PDF.
-</figcaption>
-</figure>
-
-### Next steps
-
-- Extend the extraction to the rest of the 54,961 papers, and retry the 36 failed requests.
-- Check every quote against the source text automatically, and flag records whose quotes do
-  not match.
-- Derive fixed fields (method, solvents, temperature, time) from the paragraphs, and compare the
-  solvents with the CSD `solvent` field where it is filled.
-- Run OCR on the scanned supplementary PDFs, and ask publishers for the open-access papers that
-  are not in PMC (e.g., Z. Kristallogr. NCS and early IUCrData, about 10,000 papers).
-- Release the records of the CC BY papers as a public dataset.
+Each extraction run writes `data/runs/<name>/extractions.parquet`, one record per CSD entry.
 
 ## Licence
 
-The CSD metadata is licensed by the CCDC and is not redistributed here, nor are the website's
-entry tables built from it (`stats.json` holds counts only). Each paper keeps the licence given in its PMC record; the website shows the
-text of the CC BY papers only.
+The CSD metadata is licensed by the CCDC and is not redistributed here, nor are the website
+tables built from it (only `stats.json`, which holds counts). Each paper keeps the licence of its
+PMC record. The website shows text from CC BY papers only.
