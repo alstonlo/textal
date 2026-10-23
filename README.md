@@ -5,6 +5,7 @@
 **A dataset of crystal structures paired with text-mined crystallization procedures and outcomes.**
 
 [![data](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Data-blue)](https://huggingface.co/datasets/alstonlo/textal-data)
+[![explorer](https://img.shields.io/badge/%F0%9F%A4%97%20Explorer-6f42c1)](https://huggingface.co/spaces/alstonlo/textal)
 
 <img src="assets/example.png" width="800" alt="The unit cell of caffeinium bisulfate monohydrate beside its extracted record: the compound matched in the paper, its synthesis, its crystallization and its solid form">
 
@@ -120,53 +121,63 @@ The dataset is built from the corpus with `pixi run snakemake -s scripts/Snakefi
 
 ## About TEXtal
 
-Crystal structure prediction (CSP) predicts how a molecule packs into a crystal from the molecule
-alone, yet the same molecule can form polymorphs (different molecular arrangements), solvates
-(crystals containing solvent) or salts (ionic compounds), depending on the procedure. The procedure
-is the missing input, recorded nowhere but in the papers: the Cambridge Structural Database (CSD)
-does not store it, and we found no public dataset pairing CSD structures with their crystallization
-procedures.
+Generative models for crystal structure prediction (CSP) predict how a molecule packs into a
+crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular
+arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how
+it was crystallized. Generative models of crystals are increasingly conditioned on text or on
+several modalities at once. The crystallization procedure is a natural condition for these models,
+but the Cambridge Structural Database (CSD) does not store it, and we found no public dataset
+pairing CSD structures with their procedures.
 
-Mining these procedures is limited by access rather than by method. Of the 554,956 papers the CSD
-cites, the 56,225 in PubMed Central's (PMC) open-access list can be downloaded and read; the rest
-sit behind publisher sites. These accessible papers cover 121,147 entries, including about one
-in five new entries since 2020. TEXtal extracts procedures from this subset. For scale, the
-text-mined inorganic synthesis dataset of
-[Kononova et al. (2019)](https://doi.org/10.1038/s41597-019-0224-1), which became a standard
-training set, holds 19,488 recipes; TEXtal already holds 39,082 entries with a crystallization
-paragraph.
+Mining these procedures is limited by access more than by method. Of the 554,956 papers the CSD
+cites, only the 56,225 in the open-access list of PubMed Central (PMC) can be downloaded freely;
+they cover 121,147 CSD entries, including about one in five of the CSD entries added since 2020.
+From these papers, TEXtal already holds 39,082 entries with a crystallization paragraph.
 
-**Approach.** We download papers automatically from PMC's open-access bucket on Amazon Web
-Services, which held 54,961 of the 56,225 papers (203 GB), each with full text as XML. We convert
-XML to Markdown with pandoc without optical character recognition (OCR), and supplementary PDFs
-with PyMuPDF4LLM; the 1.6% that are scanned still need OCR with MinerU.
+### Approach
 
-We send one large language model (LLM) request per paper, with its text and a table of its CSD
-entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC) deposition
-number, name and formula. For each entry, we ask the model to name the compound, rate its match
-confidence (high, medium or low) and write one short paragraph per topic: synthesis (compound
-preparation), crystallization (crystal growth), characterization (analytical measurements), solid
-form (crystal composition and arrangement, such as a salt or hydrate) and purpose and properties,
-each backed by at least one verbatim quote. We ask for paragraphs rather than fixed fields (solvent, method,
-temperature) because we do not know what the papers report; fields can be derived later.
+We download the papers from PMC's open-access bucket on Amazon Web Services, which held 54,961 of
+them (203 GB) with full text as XML; these papers form the corpus. Pandoc converts the XML to
+Markdown without optical character recognition (OCR), and PyMuPDF4LLM reads the text layer of
+supplementary PDFs. In 861 papers (1.6%), a supplementary PDF is a scanned image without a text
+layer; it would need OCR with MinerU, so it is not read.
 
-Papers from other journals were read in full by `gpt-6-luna`; Acta Crystallographica Section E
-(Acta E) papers, which report one structure each in a fixed layout, were read by `gpt-5.6-luna`
-from their experimental sections only. Both ran at reasoning effort `high`, which gave the same
-matches and core paragraphs as `max` about 10 times faster.
+Each record describes one CSD entry in one paper. It holds the paper's label for the compound
+(e.g. "3a"), the model's confidence that the entry is this compound (high, medium or low) with its
+reason, and one paragraph per topic: synthesis (compound preparation), crystallization (crystal
+growth), characterization (other measurements), solid form (such as a salt or hydrate) and purpose
+and properties. Each filled paragraph must cite at least one verbatim quote. We chose paragraphs
+over fixed fields (solvent, method, temperature) because we did not know what the papers report;
+fields can be derived later.
 
-**Results.** The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus's
-papers (Figure 1a): 23,420 entries from 23,077 Acta E papers (85% of Acta E) and 21,646 entries
-from 5,843 papers in other journals (21% of papers in those journals). The model wrote records
-for 44,826 entries (99.5%) and rated 98% of its matches high confidence.
+We send one large language model (LLM) request per paper, with the paper's Markdown and a table of
+its CSD entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC)
+deposition number, name, formula and fields such as temperature, polymorph and colour. The reply
+follows a JSON schema, one record per entry. The instructions tell the model to keep separate the
+records of polymorphs, solvates and measurements at different temperatures, to copy a procedure
+that several compounds share into the record of each, to write only what the paper says, and to
+skip what the CSD already holds (unit cell, geometry, packing).
 
-Most records describe synthesis and crystallization: 97% describe synthesis, 87% crystallization,
-62% characterization, 46% purpose and properties and 42% solid form (Figure 1b). The Acta E run,
-reading experimental sections only, nearly always includes synthesis and crystallization and
-rarely the other topics.
+In the full-text run, `gpt-6-luna` read in full the papers from journals other than Acta
+Crystallographica Section E (Acta E). Acta E papers report one structure each in a fixed layout, so
+in the Acta E run, `gpt-5.6-luna` read only their experimental sections, split into numbered
+sentences. The model cites sentence numbers and the code copies in the cited sentences, so the
+quotes of the Acta E run are verbatim. Both runs used reasoning effort `high`, which gave the same
+matches as `max` about 10 times faster.
 
-In a manual check of 10 papers, the model matched all 23 entries to the right compound; of its
-337 quotes, 27 differed from the paper, mostly in hyphenation or letter case.
+### Results
+
+The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus (Figure 1a):
+23,420 entries from 23,077 Acta E papers (85% of the Acta E papers in the corpus) and 21,646
+entries from 5,843 papers in other journals (21% of their papers in the corpus).
+
+Most records describe synthesis (97%) and crystallization (87%); fewer describe characterization
+(62%), purpose and properties (46%) or solid form (42%) (Figure 1b).
+
+The model returned a record for 44,826 of the 45,066 entries (99.5%), and rated its confidence in
+the match high in 98% of the records (Figure 1c).
+In a manual check of 10 papers, the model matched all 23 entries to the right compound; of its 337
+quotes, 27 differed from the paper, mostly in hyphenation or letter case.
 
 Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can be shared.
 
@@ -174,18 +185,19 @@ Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text
 <img src="assets/results.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
 </figure></div>
 
-> **Figure 1.** (a) Paper counts for the ten largest journals, split into papers that were mined
-(blue) and papers that were not (grey), with the share mined. Papers were mined journal by
-journal, so Inorganic Chemistry is only partly covered. (b) The share of records with each topic
-paragraph filled, per run. The Acta E run read only the experimental sections, so its records
-rarely cover characterization, purpose or the solid form.
-(c) The confidence of the match between the CSD entry and the compound in the paper.
+> **Figure 1.** (a) Paper counts for the ten largest journals, split into papers that were
+extracted (blue) and papers that were not (grey), with the share extracted. We extracted the papers
+one journal at a time, and Inorganic Chemistry is only partly done. (b) The share of records with
+each topic paragraph filled, per run (Acta E or other journals). The Acta E run read only the
+experimental sections, so its records rarely cover characterization, purpose or the solid form.
+(c) The confidence of the match between the CSD entry and the compound, as rated by the model.
 
-**Limitations.** The 26,041 papers that are not mined are mostly from general chemistry
-journals, and 4,149 of them are Acta E papers. The quotes of the full-text run are not checked
-against the source text automatically, unlike those of the Acta E run. The records are
-paragraphs, not fixed fields (method, solvents, temperature, time). The scanned supplementary
-PDFs were not read, as they need OCR.
+### Next Steps
+
+- Extract the remaining 26,041 papers, mostly from general chemistry journals (4,149 are Acta E).
+- Check the quotes of the full-text run against the paper automatically.
+- Read the 861 scanned supplementary PDFs with MinerU.
+- Derive fixed fields, such as solvent, method and temperature, from the topic paragraphs.
 
 ## Licence
 
