@@ -99,6 +99,8 @@ pixi run snakemake -s scripts/Snakefile -j1 example           # the example abov
 pixi run snakemake -s scripts/Snakefile -j1 release
 ```
 
+The current website release lists **50,405 refcodes from 33,109 papers**, including **29,751 refcodes with publisher-sourced CIFs**. It includes refcodes from the extraction runs and additional Acta E records; it does not list every refcode in the downloaded corpus. Of the listed refcodes, 45,066 have an extraction attempt and 5,339 await extraction. Those 5,339 are only the backlog within the website release, not the backlog for the full corpus. The homepage therefore shows extraction progress by paper across all 54,961 downloaded papers: 28,920 with extraction attempted, 4,189 listed and awaiting extraction, and 21,852 not yet listed or extracted. The latter two groups total 26,041 papers awaiting extraction; the 4,189 listed papers contain the 5,339 pending refcodes.
+
 ## About TEXtal
 
 Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized.The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it. In related streams beyond CSP, there is growing interest in multimodal or text-aligned generative models, such as for proteins and molecules.

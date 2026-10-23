@@ -16,11 +16,18 @@ RUN pip install --no-cache-dir --user \
     py3Dmol==2.5.4 \
     polars==2.0.0 \
     huggingface_hub==2.2.0
-COPY --chown=user src/viz src/viz
-
 ENV PYTHONPATH=/home/user/app/src TEXTAL_DATA=/home/user/data
 
-# The dataset (3.3 GB) is downloaded at startup, not at build time, to keep the image small.
-CMD hf download alstonlo/textal-data --repo-type dataset --local-dir "$TEXTAL_DATA" \
-    && cd "$TEXTAL_DATA" && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar \
-    && cd /home/user/app && exec uvicorn viz.app:app --host 0.0.0.0 --port 7860
+# Keep downloads and extraction out of container startup. Pin a dataset commit
+# with this build argument when publishing a new data release.
+ARG DATASET_REVISION=main
+RUN hf download alstonlo/textal-data \
+        entries.parquet papers.parquet snapshot.json texts.tar files.tar \
+        --repo-type dataset --revision "$DATASET_REVISION" --local-dir "$TEXTAL_DATA" \
+    && cd "$TEXTAL_DATA" && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar
+
+COPY --chown=user src/viz src/viz
+# Bake the CIF index and first-page previews into the image, too.
+RUN python -m viz.prewarm
+
+CMD ["uvicorn", "viz.app:app", "--host", "0.0.0.0", "--port", "7860"]
