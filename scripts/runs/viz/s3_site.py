@@ -93,7 +93,8 @@ def main():
         return body
 
     save("/", out / "index.html")
-    save("/explore", out / "explore" / "index.html")
+    # Every entry goes on the page; `explore.js` applies the "Has CIF" filter by default.
+    save("/explore?cif=0", out / "explore" / "index.html")
     save("/crystal-frame.html", out / "crystal-frame.html")
     (out / "404.html").write_text(
         "<!doctype html><meta charset=utf-8><title>Not found</title>"

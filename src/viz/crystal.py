@@ -22,7 +22,7 @@ UNIT_CUBE_EDGES = np.asarray(
     ]
 )  # (12, 2, 3)
 
-# Covalent radii (Å) for the bonds of the thumbnails; the fallback covers the rest.
+# Covalent radii (Å) for the bonds and atom sizes of the thumbnails; the fallback covers the rest.
 RADII = {
     "H": 0.31, "B": 0.84, "C": 0.76, "N": 0.71, "O": 0.66, "F": 0.57, "Si": 1.11, "P": 1.07,
     "S": 1.05, "Cl": 1.02, "Br": 1.20, "I": 1.39, "Na": 1.66, "K": 2.03, "Ca": 1.76,
@@ -176,8 +176,9 @@ VIEW = np.asarray(
 def draw_cell(cif: str, size: int = 240, ink: str = "#111111") -> str:
     """Draws the filled unit cell as a flat one-colour SVG: cell edges, bonds and heavy atoms.
 
-    Hydrogens are left out and carbons are small dots, so the drawing stays legible at thumbnail
-    size and reads as a specimen on a coloured tile.
+    Hydrogens are left out and carbons are smaller dots, so the drawing stays legible at thumbnail
+    size and reads as a specimen on a coloured tile. Other atoms grow with their covalent radius,
+    so metals and halogens stand out, from a floor that keeps the colours of N, O and F legible.
     """
     elems, frac, lattice, _ = parse_structure(cif)
     heavy = [i for i, e in enumerate(elems) if e != "H"]
@@ -205,14 +206,21 @@ def draw_cell(cif: str, size: int = 240, ink: str = "#111111") -> str:
         out.append(
             f'<path d="M{cxy[k, 0]:.1f} {cxy[k, 1]:.1f}L{cxy[k + 1, 0]:.1f} {cxy[k + 1, 1]:.1f}"/>'
         )
-    out.append(f'</g><g stroke="{ink}" stroke-width="1.3" stroke-linecap="round" opacity="0.85">')
+
+    # Bonds and atoms are sized in Å, so that two drawings compare at any zoom.
+    out.append(
+        f'</g><g stroke="{ink}" stroke-width="{0.12 * scale:.2f}" stroke-linecap="round"'
+        ' opacity="0.85">'
+    )
     for a, b in zip(i, j, strict=True):
         out.append(f'<path d="M{xy[a, 0]:.1f} {xy[a, 1]:.1f}L{xy[b, 0]:.1f} {xy[b, 1]:.1f}"/>')
+
+    # Back to front, so that nearer atoms cover farther ones.
     out.append("</g><g>")
-    for k in range(len(xy)):
-        r = 1.6 if elems[k] == "C" else 3.2
+    for k in np.argsort(cart[:, 2]):
+        r = scale * (0.23 if elems[k] == "C" else 0.3 * max(1.0, radii[k] / RADII["C"]))
         fill = ELEMENT_COLOURS.get(elems[k], OTHER_COLOUR)
-        out.append(f'<circle cx="{xy[k, 0]:.1f}" cy="{xy[k, 1]:.1f}" r="{r}" fill="{fill}"/>')
+        out.append(f'<circle cx="{xy[k, 0]:.1f}" cy="{xy[k, 1]:.1f}" r="{r:.1f}" fill="{fill}"/>')
     out.append("</g></svg>")
     return "".join(out)
 

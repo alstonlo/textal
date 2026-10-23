@@ -117,8 +117,8 @@ def main(
     ax.set_xticks(x, list(FIELDS.values()))
     ax.set_ylim(0, 100)
     ax.set_ylabel("Records (%)")
-    ax.set_title(f"(b) Filled paragraphs of the {len(ext):,} records", pad=16)
-    ax.legend(fontsize=6, loc="lower left", bbox_to_anchor=(0, 1), ncols=2, frameon=False)
+    ax.set_title(f"(b) Filled paragraphs of the {len(ext):,} records")
+    ax.legend(fontsize=6, loc="upper right", bbox_to_anchor=(-0.12, 1))
 
     ax = axes["confidence"]
     bottom = np.zeros(len(RUNS))

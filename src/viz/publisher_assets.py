@@ -318,7 +318,7 @@ def _thumbnail(pmcid):
         raise ValueError("No publisher CIF available")
     asset = data["cifs"][0]
     asset_file(pmcid, asset["cache_name"])
-    dest = CACHE / pmcid / (asset["sha256"] + "-main-preview-v1.svg")
+    dest = CACHE / pmcid / (asset["sha256"] + "-main-preview-v5.svg")
     if not dest.exists():
         models = cif_models(pmcid, asset["cache_name"])
         with MODEL_LIMIT:

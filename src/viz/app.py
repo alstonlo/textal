@@ -269,6 +269,7 @@ def explore(
     sort: str = "refcode",
     page: int = 1,
     journal: str = "",
+    cif: int = 1,
 ):
     words = q.casefold().split()
     found = [
@@ -277,6 +278,7 @@ def explore(
         if all(w in SEARCH[e["id"]] for w in words)
         and (not status or e["extraction"]["status"] == status)
         and (not journal or e["paper"]["journal"] == journal)
+        and (not cif or e["paper"]["provenance"].get("has_publisher_package", True))
     ]
     if sort == "year":
         found.sort(key=lambda e: (e["paper"]["year"] or 0, e["id"]), reverse=True)
@@ -286,7 +288,7 @@ def explore(
 
     def link(n):
         return "/explore?" + urlencode(
-            {"q": q, "status": status, "sort": sort, "page": n, "journal": journal}
+            {"q": q, "status": status, "sort": sort, "page": n, "journal": journal, "cif": cif}
         )
 
     return templates.TemplateResponse(
@@ -305,6 +307,7 @@ def explore(
             "next": link(page + 1) if page < pages else None,
             "statuses": SNAPSHOT["extraction_statuses"],
             "journal": journal,
+            "cif": cif,
             "journals": SNAPSHOT.get("journals", {}),
         },
     )

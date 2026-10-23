@@ -1,6 +1,11 @@
 // The server searches and paginates. The static export renders every entry on this page and
 // marks the form with `data-static`, so the search runs here instead.
 const form = document.querySelector("form.tools");
+const hasCif = form.querySelector("[data-cif]");
+hasCif.addEventListener("click", () => {
+  form.cif.value = form.cif.value === "1" ? "0" : "1";
+  form.requestSubmit();
+});
 if (form.hasAttribute("data-static")) {
   const tiles = [...document.querySelectorAll(".tile")];
   const grid = tiles[0]?.parentElement;
@@ -13,7 +18,8 @@ if (form.hasAttribute("data-static")) {
       (t) =>
         words.every((w) => t.dataset.search.includes(w)) &&
         (!status || t.dataset.status === status) &&
-        (!journal || t.dataset.journal === journal),
+        (!journal || t.dataset.journal === journal) &&
+        (form.cif.value === "0" || t.dataset.cif === "1"),
     );
     const byId = (a, b) => a.dataset.id.localeCompare(b.dataset.id);
     if (form.sort.value === "year")
@@ -26,10 +32,13 @@ if (form.hasAttribute("data-static")) {
     }
     line.textContent = `${shown.length.toLocaleString()} matching entries`;
     empty.hidden = shown.length > 0;
+    hasCif.classList.toggle("on", form.cif.value === "1");
   };
   const params = new URLSearchParams(location.search);
   for (const k of ["q", "journal", "status", "sort"])
     if (params.has(k)) form[k].value = params.get(k);
+  // The page is exported with every entry (cif=0), but the filter is on by default.
+  form.cif.value = params.get("cif") ?? "1";
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     history.replaceState(null, "", "?" + new URLSearchParams(new FormData(form)));
