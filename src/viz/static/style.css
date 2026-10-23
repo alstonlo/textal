@@ -232,7 +232,7 @@ footer a:hover {
 }
 .strip {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 16px;
 }
 .strip-item {
@@ -305,6 +305,9 @@ footer a:hover {
   gap: 12px;
   margin: 0;
   min-width: 0;
+}
+.charts .wide {
+  grid-column: span 2;
 }
 .charts figcaption {
   font-size: 13px;
