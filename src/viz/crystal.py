@@ -1,3 +1,4 @@
+import colorsys
 import math
 import re
 
@@ -29,16 +30,49 @@ RADII = {
     "Mg": 1.41, "Zn": 1.22, "Cu": 1.32, "Fe": 1.32, "Pt": 1.36, "Li": 1.28,
 }  # fmt: skip
 
-# Element colours for the drawings: CPK hues, in the site's palette; the fallback is for metals.
+# The Jmol colours that py3Dmol uses, for the elements the site's palette below leaves out.
+JMOL_COLOURS = {
+    "Li": "#CC80FF", "Be": "#C2FF00", "B": "#FFB5B5", "Na": "#AB5CF2", "Mg": "#8AFF00",
+    "Al": "#BFA6A6", "Si": "#F0C8A0", "K": "#8F40D4", "Ca": "#3DFF00", "Sc": "#E6E6E6",
+    "Ti": "#BFC2C7", "V": "#A6A6AB", "Cr": "#8A99C7", "Mn": "#9C7AC7", "Fe": "#E06633",
+    "Co": "#F090A0", "Ni": "#50D050", "Cu": "#C88033", "Zn": "#7D80B0", "Ga": "#C28F8F",
+    "Ge": "#668F8F", "As": "#BD80E3", "Se": "#FFA100", "Rb": "#702EB0", "Sr": "#00FF00",
+    "Y": "#94FFFF", "Zr": "#94E0E0", "Nb": "#73C2C9", "Mo": "#54B5B5", "Tc": "#3B9E9E",
+    "Ru": "#248F8F", "Rh": "#0A7D8C", "Pd": "#006985", "Ag": "#C0C0C0", "Cd": "#FFD98F",
+    "In": "#A67573", "Sn": "#668080", "Sb": "#9E63B5", "Te": "#D47A00", "Xe": "#429EB0",
+    "Cs": "#57178F", "Ba": "#00C900", "La": "#70D4FF", "Ce": "#FFFFC7", "Pr": "#D9FFC7",
+    "Nd": "#C7FFC7", "Pm": "#A3FFC7", "Sm": "#8FFFC7", "Eu": "#61FFC7", "Gd": "#45FFC7",
+    "Tb": "#30FFC7", "Dy": "#1FFFC7", "Ho": "#00FF9C", "Er": "#00E675", "Tm": "#00D452",
+    "Yb": "#00BF38", "Lu": "#00AB24", "Hf": "#4DC2FF", "Ta": "#4DA6FF", "W": "#2194D6",
+    "Re": "#267DAB", "Os": "#266696", "Ir": "#175487", "Pt": "#D0D0E0", "Au": "#FFD123",
+    "Hg": "#B8B8D0", "Tl": "#A6544D", "Pb": "#575961", "Bi": "#9E4FB5", "Th": "#00BAFF",
+    "U": "#008FFF",
+}  # fmt: skip
+
+
+def legible(colour: str) -> str:
+    """The colour at a lightness of at most 0.5 and the saturation of the site's palette, so that
+    a flat dot shows on the light tiles without turning muddy; greys stay grey."""
+    rgb = (int(colour[i : i + 2], 16) / 255 for i in (1, 3, 5))
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    s = 0.0 if (s < 0.15) else min(s, 0.6)
+    return "#" + "".join(f"{round(255 * v):02X}" for v in colorsys.hls_to_rgb(h, min(l, 0.5), s))
+
+
+# Element colours for the drawings: CPK hues, in the site's palette, and the Jmol hues for the rest.
 ELEMENT_COLOURS = {
+    **{e: legible(c) for e, c in JMOL_COLOURS.items()},
     "C": "#333333", "N": "#3B4BC9", "O": "#C8324E", "S": "#E0A400", "P": "#EB7A24",
-    "F": "#34B868", "Cl": "#25A443", "Br": "#9B2235", "I": "#7A3BD0",
+    "F": "#34B868", "Cl": "#25A443", "Br": "#9B2235", "I": "#7A3BD0", "Co": "#B455B6",
+    "B": "#E0709A", "Al": "#808080", "Ga": "#808080", "In": "#808080",
 }  # fmt: skip
 OTHER_COLOUR = "#7A7A78"
 
-# The 3D viewer: the same hues, with lighter carbons and hydrogens so the sticks keep their depth.
+# The 3D viewer: the same hues, with lighter carbons and hydrogens so the sticks keep their depth;
+# its shading keeps the light Jmol colours visible.
 VIEWER_COLOURS = {
-    **ELEMENT_COLOURS, "C": "#8C8C88", "H": "#E4E4E0", "O": "#D9405C", "S": "#F2B400",
+    **ELEMENT_COLOURS, **JMOL_COLOURS,
+    "C": "#8C8C88", "H": "#E4E4E0", "O": "#D9405C", "S": "#F2B400", "Co": "#B455B6",
 }  # fmt: skip
 
 
@@ -171,9 +205,9 @@ def draw_cell(
 ) -> str:
     """Draws the filled unit cell as a flat one-colour SVG: cell edges, bonds and heavy atoms.
 
-    Hydrogens are left out and carbons are smaller dots, so the drawing stays legible at thumbnail
-    size and reads as a specimen on a coloured tile. Other atoms grow with their covalent radius,
-    so metals and halogens stand out, from a floor that keeps the colours of N, O and F legible.
+    Hydrogens are left out, so the drawing stays legible at thumbnail size and reads as a specimen
+    on a coloured tile. Every atom is drawn in proportion to its covalent radius, so metals and
+    halogens stand out.
 
     Args:
         view: The yaw and pitch (radians) of the camera. The default tilts the cell so that all
@@ -225,7 +259,7 @@ def draw_cell(
     # Back to front, so that nearer atoms cover farther ones.
     out.append("</g><g>")
     for k in np.argsort(cart[:, 2]):
-        r = scale * (0.23 if elems[k] == "C" else 0.3 * max(1.0, radii[k] / RADII["C"]))
+        r = scale * 0.45 * gemmi.Element(elems[k]).covalent_r
         fill = ELEMENT_COLOURS.get(elems[k], OTHER_COLOUR)
         out.append(f'<circle cx="{xy[k, 0]:.1f}" cy="{xy[k, 1]:.1f}" r="{r:.1f}" fill="{fill}"/>')
     out.append("</g></svg>")

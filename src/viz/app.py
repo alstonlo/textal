@@ -143,22 +143,27 @@ def load_stats(entries):
     if len(licenses) > 5:
         common.append(("Other", sum(licenses.values()) - sum(n for _, n in common)))
     y = sorted(years)
-    line = {
-        "mode": "lines+markers",
-        "marker": {"size": 5},
-        "meta": "bar",
-        "hovertemplate": "%{x}: %{y:,}<extra></extra>",
-    }
+    line = {"mode": "lines+markers", "marker": {"size": 5}}
     figures = {
-        "coverage": figure(
-            [go.Scatter(x=y, y=[refyears.get(v, 0) for v in y], **line)],
+        "years": figure(
+            [
+                go.Scatter(
+                    x=y,
+                    y=[refyears.get(v, 0) for v in y],
+                    meta="bar",
+                    hovertemplate="%{x}: %{y:,} refcodes<extra></extra>",
+                    **line,
+                ),
+                go.Scatter(
+                    x=y,
+                    y=[years[v] for v in y],
+                    meta="bar-warm",
+                    hovertemplate="%{x}: %{y:,} papers<extra></extra>",
+                    **line,
+                ),
+            ],
             xaxis={"title": {"text": "Publication year"}},
-            yaxis={"title": {"text": "Refcode links"}, "rangemode": "tozero"},
-        ),
-        "pmc_years": figure(
-            [go.Scatter(x=y, y=[years[v] for v in y], **line)],
-            xaxis={"title": {"text": "Publication year"}},
-            yaxis={"title": {"text": "Papers"}, "rangemode": "tozero"},
+            yaxis={"title": {"text": "Count"}, "rangemode": "tozero"},
         ),
         "journals": bars(top, other="Other journals"),
         "licenses": bars(common, other="Other"),
@@ -212,6 +217,7 @@ templates.env.globals["root"] = ""
 templates.env.globals["static_site"] = False
 templates.env.globals["thumb_version"] = publisher_assets.THUMB_VERSION
 templates.env.globals["has_publisher_cif"] = publisher_assets.has_cif
+templates.env.globals["journal_aliases"] = JOURNAL_ALIASES
 PAGE_SIZE = 48
 
 
@@ -239,7 +245,7 @@ async def update_public_snapshot(request, call_next):
 def index(request: Request):
     hero = [
         BY_ID[r]
-        for r in ("COVPIN01", "AWOHOM", "PODZIU", "XEXYOR", "BAPTUL", "BINBOT")
+        for r in ("BAPLOT02", "MORPIN01", "XARWUM03", "KNATAR11", "LEGFEK")
         if r in BY_ID
     ]
     return templates.TemplateResponse(

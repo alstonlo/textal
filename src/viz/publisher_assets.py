@@ -21,7 +21,7 @@ from viz.publisher_data import DATA, package_name
 
 PAPERS = {}
 MODEL_LIMIT = threading.Semaphore(2)
-THUMB_VERSION = 5
+THUMB_VERSION = 8
 CIF_INDEX = {}
 CIF_INDEX_DIRTY = False
 CIF_INDEX_LOCK = threading.Lock()
