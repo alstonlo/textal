@@ -19,7 +19,7 @@ from viz.publisher_data import DATA, package_name
 
 PAPERS = {}
 MODEL_LIMIT = threading.Semaphore(2)
-THUMB_VERSION = 5
+THUMB_VERSION = 7
 
 
 def configure(papers):
