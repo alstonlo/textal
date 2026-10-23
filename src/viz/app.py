@@ -46,7 +46,7 @@ def figure(traces: list, **layout) -> dict:
 
     # The axes of `theme.apply()`: a thin black frame and outward ticks. A value axis turns on
     # its faint grid through `layout`, which is applied last so that it wins over the defaults.
-    # The margins are fixed, not fitted to the tick labels, so every chart has the same plot area.
+    # Charts share base margins; categorical charts expand them for long tick labels.
     axis = {
         "automargin": False,
         "showgrid": False,
@@ -84,6 +84,7 @@ def figure(traces: list, **layout) -> dict:
 JOURNAL_ALIASES = {
     "Acta Crystallographica E": "Acta Cryst. E",
     "Angewandte Chemie (International ed. in English)": "Angew. Chem.",
+    "Angew. Chem., Int. Ed.": "Angew. Chem.",
     "Chemistry (Weinheim an der Bergstrasse, Germany)": "Chem. Eur. J.",
     "Inorganic chemistry": "Inorg. Chem.",
     "Crystal growth & design": "Cryst. Growth Des.",
@@ -115,7 +116,12 @@ def bars(counts: list[tuple[str, int]], other: str) -> dict:
     return figure(
         traces,
         barmode="overlay",
-        xaxis={"categoryorder": "array", "categoryarray": labels, "tickangle": -45},
+        xaxis={
+            "categoryorder": "array",
+            "categoryarray": labels,
+            "tickangle": -45,
+            "automargin": True,
+        },
         yaxis={
             "title": {"text": "Papers"},
             "tickformat": "~s",

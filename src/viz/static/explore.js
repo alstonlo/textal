@@ -7,37 +7,42 @@ const updateCifButton = () => {
   hasCif.classList.toggle("on", pressed);
   hasCif.setAttribute("aria-pressed", String(pressed));
 };
-hasCif.addEventListener("click", async () => {
-  const previous = form.cif.value;
-  form.cif.value = previous === "1" ? "0" : "1";
-  updateCifButton();
-  if (form.hasAttribute("data-static")) {
-    form.requestSubmit();
-    return;
-  }
+let controller, requestId = 0;
+const cancelPending = () => {
+  requestId++;
+  controller?.abort();
+  form.removeAttribute("aria-busy");
+};
+async function updateResults() {
+  cancelPending();
+  const id = requestId;
+  controller = new AbortController();
   const url = new URL(form.action, location.href);
   url.search = new URLSearchParams(new FormData(form));
-  hasCif.disabled = true;
   form.setAttribute("aria-busy", "true");
   try {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: controller.signal });
     if (!response.ok) throw Error("Could not filter entries");
     const page = new DOMParser().parseFromString(await response.text(), "text/html");
+    if (id !== requestId) return;
     for (const selector of [".results-line", ".publisher-tiles", ".empty-state"])
       document.querySelector(selector).replaceWith(page.querySelector(selector));
     document.querySelector(".pagination")?.remove();
     const pagination = page.querySelector(".pagination");
     if (pagination) document.querySelector(".empty-state").after(pagination);
-    history.pushState(null, "", url);
+    history.replaceState(null, "", url);
   } catch (error) {
-    form.cif.value = previous;
-    updateCifButton();
+    if (id !== requestId || error.name === "AbortError") return;
     document.querySelector(".results-line").textContent =
-      "Could not update results. Please try again.";
+      "Could not update results. Change a filter or press Enter to try again.";
   } finally {
-    hasCif.disabled = false;
-    form.removeAttribute("aria-busy");
+    if (id === requestId) form.removeAttribute("aria-busy");
   }
+}
+hasCif.addEventListener("click", () => {
+  form.cif.value = form.cif.value === "1" ? "0" : "1";
+  updateCifButton();
+  form.requestSubmit();
 });
 window.addEventListener("popstate", () => location.reload());
 if (form.hasAttribute("data-static")) {
@@ -78,6 +83,15 @@ if (form.hasAttribute("data-static")) {
     history.replaceState(null, "", "?" + new URLSearchParams(new FormData(form)));
     apply();
   });
-  form.addEventListener("input", apply);
   apply();
 }
+
+else {
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    updateResults();
+  });
+}
+form.addEventListener("change", (event) => {
+  if (event.target.tagName === "SELECT") form.requestSubmit();
+});

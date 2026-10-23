@@ -7,12 +7,12 @@
 {% block body %}
   <section class="hero">
     <h1>Crystals, and how they were grown</h1>
-    <p class="lead">An open dataset that links Cambridge Structural Database entries to the crystallisation procedures written in their papers.</p>
+    <p class="lead"><span class="wrap-measure">An open dataset that links Cambridge Structural Database entries</span> to the crystallisation procedures written in their papers.</p>
     <a class="button" href="{{ root }}/explore">Browse the {{ "{:,}".format(snapshot.refcodes) }} entries</a>
   </section>
   <aside class="data-disclaimer">
     <strong>Data disclosure</strong>
-    <p>Apart from refcodes, this site shows no data from the Cambridge Crystallographic Data Centre (CCDC). The crystal structure files (CIFs), chemical schemes and article text all come from the publishers. Publisher refcodes are shown where available.</p>
+    <p><span class="wrap-measure">Apart from refcodes, this site shows no data from the Cambridge Crystallographic Data Centre (CCDC). The crystal structure files (CIFs),</span> chemical schemes, and article text all come from the publishers. Publisher refcodes are shown where available.</p>
   </aside>
   <section class="strip">
     {% for e in hero %}
@@ -32,14 +32,14 @@
     <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>refcodes whose extraction has run; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} still pending</span></div>
   </section>
   <section class="block collection-note">
-    <h2>Publisher sources, across journals</h2>
-    <p class="muted">The entries come from Acta Crystallographica Section E (Acta E) and from the other journals in the extraction. Each entry pairs the extracted procedure with its paper, excerpts of the paper's text, and the publisher's CIF and chemical scheme where the archive holds them. A CIF belongs to the whole paper, so its structure blocks are not matched to individual refcodes automatically.</p>
-    <p class="small muted">Snapshot built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. Filter by journal in the Explorer.</p>
+    <h2>About the entries</h2>
+    <p class="muted">Each entry links a CSD refcode to a procedure extracted from its paper. We include the source text and, where available, the publisher’s CIFs and chemical schemes. These files can cover several compounds but in cases where there are multiple structures from a paper, we have not matched individual refcodes to individual structures inside each CIF.</p>
+    <p class="small muted">Dataset built {{ snapshot.built_at[:16]|replace('T', ' ') }} UTC. <a href="{{ root }}/explore">Browse by journal →</a></p>
   </section>
   <section class="block">
-    <h2>The corpus</h2>
-    <p class="muted">Paper identities and publication years come from publisher records and Europe PMC. The charts describe the papers and refcodes in this snapshot.</p>
-    <p class="small muted">Licence labels come from the publisher records. A paper whose record names no licence is labelled Not indexed, and the less common labels are grouped under Other.</p>
+    <h2>Dataset overview</h2>
+    <p class="muted">The charts show publication years, journals and licences for the papers in this dataset. Bibliographic details come from publishers and Europe PMC.</p>
+    <p class="small muted">Licences are taken from publisher records. “Not indexed” means no licence was recorded. Less common licences are grouped under “Other”.</p>
     <div class="charts">
       <figure class="wide">
         <figcaption><span class="key" style="--key: var(--bar)">Refcodes</span> and <span class="key" style="--key: var(--bar-warm)">papers</span> by publication year</figcaption>

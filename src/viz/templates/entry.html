@@ -28,7 +28,6 @@
       <h2>What the paper says about this crystal</h2>
       {% if x.status=="pending" %}<p class="muted record-lead">The extraction for this entry had not finished when this snapshot was built.</p>{% else %}
         {% if x.summary %}<p class="record-lead">{{ x.summary }}</p>{% endif %}
-        {% if x.compound_label %}<p class="muted {% if x.summary %}record-match{% else %}record-lead{% endif %}">The paper calls this {{ x.compound_label }}.</p>{% endif %}
         {% if not x.fields and not x.summary %}<p class="muted record-lead">The extraction produced no record for this entry (status: {{ x.status|replace('_', ' ') }}).</p>{% endif %}
         <dl class="record-fields">
           {% for field in fields if x.fields.get(field) %}
@@ -44,7 +43,6 @@
         </dl>
       {% endif %}
       {% if x.extracted_at %}<p class="muted small extraction-time">Extracted by {{ x.model or 'the extraction model' }} on {{ x.extracted_at|extraction_date }}.</p>{% endif %}
-      {% if paper.provenance.collection=="Acta E" %}<details class="full-snippets"><summary>Experimental section of the Acta E article</summary>{% for sec in paper.sections %}<h3>{{ sec.label or '' }} {{ sec.title or 'Experimental' }}</h3>{% endfor %}{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">No matching section was found in the saved XML.</p>{% endfor %}</details>{% endif %}
     </div>
     <div class="paper" data-doi="{{ e.doi }}"{% if paper.provenance.get("has_full_text") %} data-text="{{ root }}/api/paper-text/{{ paper.pmcid }}"{% endif %}>
       <h2>The paper</h2>
@@ -61,7 +59,7 @@
       <div class="paper-text" id="paper-text"><h3>Publisher excerpts</h3>{% for p in paper.paragraphs %}<p>{{ p.text }}</p>{% else %}<p class="muted">The article text is not stored here. Follow the DOI above to read it.</p>{% endfor %}</div>
       <details class="license-note"><summary>Publisher licence & bibliography sources</summary><p>{{ paper.provenance.bibliography_source }}{% if paper.provenance.get("bibliography_url") %} · <a href="{{ paper.provenance.bibliography_url }}"
     target="_blank"
-    rel="noopener">Source ↗</a>{% endif %}</p>{% for lic in paper.licenses %}<p>{{ lic.text }}{% if lic.url %} <a href="{{ lic.url }}" target="_blank" rel="noopener">Publisher terms ↗</a>{% endif %}</p>{% else %}<p>No licence terms were recorded for this paper. See the publisher's article.</p>{% endfor %}</details>
+    rel="noopener">Source ↗</a>{% endif %}</p>{% for lic in paper.licenses %}{% set licence_body = lic.text or '' %}{% if lic.url and licence_body.startswith(lic.url) %}{% set licence_body = licence_body[lic.url|length:] %}{% endif %}<p>{% if lic.url %}<a class="licence-url" href="{{ lic.url }}" target="_blank" rel="noopener">{{ lic.url }} ↗</a>{% endif %}{{ licence_body|trim }}</p>{% else %}<p>No licence terms were recorded for this paper. See the publisher's article.</p>{% endfor %}</details>
     </div>
   </section>
   <script type="application/json" id="evidence">{{ x.evidence|tojson }}</script>

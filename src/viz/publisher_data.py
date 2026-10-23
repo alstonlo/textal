@@ -135,6 +135,14 @@ def load_public_data():
             if any(set(row) - allowed for row in p[field]):
                 raise ValueError("Unexpected nested publisher fields")
         for lic in p["licenses"]:
+            # XML text extraction can concatenate the licence link and its prose.
+            embedded = re.match(
+                r"^(https?://creativecommons\.org/(?:licenses/[a-z-]+/[0-9.]+/(?:[a-z]{2}/)?|publicdomain/(?:zero|mark)/[0-9.]+/))",
+                lic.get("text") or "",
+            )
+            if embedded:
+                lic["url"] = lic.get("url") or embedded.group(1)
+                lic["text"] = lic["text"][embedded.end():].lstrip()
             if lic.get("url") and not lic["url"].startswith(("http://", "https://")):
                 lic["url"] = None
         papers[p["paper_id"]] = p

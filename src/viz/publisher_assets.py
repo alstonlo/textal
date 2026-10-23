@@ -205,7 +205,13 @@ def _cif_models(pmcid, name):
     if asset is None:
         raise ValueError("CIF is not listed in this paper package.")
     raw = blobs[name]
-    parsed = gemmi.cif.read_string(raw.decode("utf-8", errors="replace"))
+    text = raw.decode("utf-8-sig", errors="replace")
+    # Some publisher CIFs put article-level tags before the first data_ header.
+    # Give that preamble its own display-only block; original bytes stay unchanged.
+    first = re.sub(r"\A(?:\s|\#[^\r\n]*(?:\r?\n|$))*", "", text)
+    if first.startswith("_") or first.lower().startswith("loop_"):
+        text = "data_publisher_metadata\n" + text
+    parsed = gemmi.cif.read_string(text)
     blocks = []
     for block in parsed:
         structure = gemmi.make_small_structure_from_block(block)
