@@ -1,55 +1,117 @@
-// The 3D viewer's second model holds the molecules around the unit cell; the button shows it.
-// py3Dmol names its viewer after the id of its div, and fills it once 3Dmol has loaded.
-const button = document.getElementById("supercell");
-const id = document.querySelector('[id^="3dmolviewer_"]').id.replace("3dmolviewer_", "viewer_");
-$3Dmolpromise.then(() => {
-  const viewer = window[id];
-  const shell = viewer.getModel(1);
-  shell.hide();
-  viewer.render();
-  button.addEventListener("click", () => {
-    const on = button.getAttribute("aria-pressed") !== "true";
-    button.setAttribute("aria-pressed", on);
-    button.classList.toggle("on", on);
-    on ? shell.show() : shell.hide();
-    viewer.zoomTo(on ? {} : { model: 0 });
-    viewer.render();
-  });
-});
+var ROOT = document.querySelector('meta[name="root"]').content;
+"use strict";
+const media = document.getElementById("publisher-media");
+if (media)
+  PaperMedia.mount(
+    media,
+    { pmcid: media.dataset.pmcid, doi: media.dataset.doi },
+    media.dataset.ref,
+  );
+window.addEventListener("pagehide", () => PaperMedia.dispose());
 
-// The paper, from its Markdown, with the extraction's evidence quotes highlighted.
-const md = document.getElementById("paper-md").textContent;
-const paper = document.getElementById("paper-text");
-if (md.trim()) paper.innerHTML = markdownit({ html: false, linkify: true }).render(md);
-
-// Each quote marks its first occurrence; a paragraph can hold several quotes, so every quote walks
-// the text afresh, after the marks of the quotes before it have split the paragraph's text. A quote
-// that runs across formatting (e.g. an italic word) is in no single text node, so its whole
-// paragraph is highlighted instead.
-const evidence = JSON.parse(document.getElementById("evidence").textContent);
-const quotes = new Set(evidence.map((e) => e.quote).filter(Boolean));
-const targets = new Map();
-for (const qt of quotes) {
-  const walker = document.createTreeWalker(paper, NodeFilter.SHOW_TEXT);
-  while (walker.nextNode() && !targets.has(qt)) {
-    const node = walker.currentNode;
-    const i = node.data.indexOf(qt);
-    if (i < 0) continue;
-    const mark = document.createElement("mark");
-    mark.textContent = qt;
-    node.replaceWith(node.data.slice(0, i), mark, node.data.slice(i + qt.length));
-    targets.set(qt, mark);
+(async () => {
+  const host = document.getElementById("paper-text"),
+    pane = document.querySelector(".paper"),
+    status = document.getElementById("paper-status");
+  if (!host || !pane) return;
+  const evidence = JSON.parse(document.getElementById("evidence").textContent);
+  const select = document.getElementById("paper-document");
+  const normalize = (s) =>
+    String(s ?? "")
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]/gu, "");
+  let docs = [],
+    active = 0;
+  const md = markdownit({ html: false, linkify: true });
+  // Publication image paths point into the supplied archive, which is private.
+  // Keep article figures as publisher links instead of exposing arbitrary files.
+  md.renderer.rules.image = () =>
+    '<span class="muted">[Figure in the original publisher article]</span>';
+  function highlight() {
+    for (const block of host.querySelectorAll("p,li")) {
+      const text = normalize(block.textContent);
+      if (
+        evidence.some(
+          (q) =>
+            normalize(q.quote).length > 20 && text.includes(normalize(q.quote)),
+        )
+      )
+        block.classList.add("quoted");
+    }
   }
-  const block = targets.has(qt) ? null : [...paper.querySelectorAll("p, li")].find((b) => b.textContent.includes(qt));
-  if (block) {
-    block.classList.add("quoted");
-    targets.set(qt, block);
+  function draw() {
+    active = Number(select.value) || 0;
+    host.innerHTML = md.render(
+      docs[active].text.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, ""),
+    );
+    status.textContent =
+      active === 0 && docs[active].main
+        ? "Full article text from the publisher archive."
+        : "Supplementary text from the publisher archive.";
+    status.classList.add("sr-only");
+    highlight();
+    host.scrollTop = 0;
   }
-}
-
-for (const block of document.querySelectorAll(".record-fields blockquote")) {
-  const target = targets.get(block.textContent);
-  if (!target) continue;
-  block.classList.add("found");
-  block.addEventListener("click", () => target.scrollIntoView({ behavior: "smooth", block: "center" }));
-}
+  try {
+    let data = {};
+    if (pane.dataset.text) {
+      const response = await fetch(pane.dataset.text);
+      if (!response.ok) throw Error("Text unavailable");
+      data = await response.json();
+    }
+    if (data.main_text)
+      docs.push({ name: "Article", text: data.main_text, main: true });
+    for (const file of data.supplements || [])
+      docs.push({ name: file.name, text: file.text, main: false });
+    if (docs.length) {
+      for (const [i, file] of docs.entries()) {
+        const option = document.createElement("option");
+        option.value = String(i);
+        option.textContent = file.name;
+        select.append(option);
+      }
+      select.parentElement.hidden = docs.length < 2;
+      select.onchange = draw;
+      draw();
+    } else {
+      status.hidden = true;
+      status.textContent = "";
+      highlight();
+    }
+  } catch {
+    status.textContent =
+      "Only excerpts are shown; the full article text could not be loaded.";
+    highlight();
+  }
+  for (const quote of document.querySelectorAll(".record-fields blockquote")) {
+    const find = () => {
+      const text = normalize(quote.textContent);
+      if (text.length < 20) return;
+      let target = [...host.querySelectorAll("p,li")].find((node) =>
+        normalize(node.textContent).includes(text),
+      );
+      if (!target && docs.length) {
+        const i = docs.findIndex((doc) => normalize(doc.text).includes(text));
+        if (i >= 0 && i !== active) {
+          select.value = String(i);
+          draw();
+          target = [...host.querySelectorAll("p,li")].find((node) =>
+            normalize(node.textContent).includes(text),
+          );
+        }
+      }
+      if (target) {
+        target.classList.add("quoted");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    };
+    quote.classList.add("found");
+    quote.onclick = find;
+    quote.onkeydown = (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        find();
+      }
+    };
+  }
+})();

@@ -1,0 +1,146 @@
+/* Publisher assets on the entry page, and the crystal viewer frame embedded in it. */
+.paper-media-section {
+  margin-top: 40px;
+  padding-top: 32px;
+  border-top: 1px solid var(--line);
+}
+.media-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px 24px;
+}
+.media-section-head h3 {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+.small-label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+.media-asset-status,
+.media-scope,
+.media-hint,
+.media-empty,
+.crystal-downloads,
+.publisher-figure figcaption,
+.media-provenance {
+  font-size: 14px;
+  color: var(--muted);
+}
+.media-scope,
+.media-hint {
+  margin-top: 12px;
+}
+.media-panels {
+  display: grid;
+  gap: 56px;
+  margin-top: 40px;
+}
+.media-panels section {
+  padding: 0;
+}
+.media-panels h4 {
+  margin: 0 0 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.media-panels .tools {
+  margin: 0 0 16px;
+}
+.crystal-frame {
+  display: block;
+  width: calc(100% + 8px);
+  height: 640px;
+  margin: -4px -4px 0;
+  border: 0;
+}
+.crystal-downloads {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.figure-panel {
+  max-width: 640px;
+}
+.publisher-figure {
+  margin: 0;
+}
+.publisher-figure img {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  padding: 24px;
+  object-fit: contain;
+  background: var(--soft);
+  border-radius: 12px;
+}
+.publisher-figure figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.media-empty {
+  padding: 24px 0;
+}
+.media-provenance {
+  margin-top: 40px;
+}
+.media-provenance summary {
+  width: fit-content;
+  cursor: pointer;
+}
+.media-provenance-body {
+  margin-top: 12px;
+}
+.media-provenance-body > div {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+}
+.media-provenance strong {
+  color: var(--ink);
+  font-weight: 500;
+}
+.source-path {
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+/* Crystal viewer frame: its own document, so it reuses the site's tools, chips and viewer foot. */
+.frame-root {
+  padding: 4px;
+}
+.frame-root p {
+  max-width: none;
+}
+.frame-root .viewer-foot {
+  align-items: baseline;
+}
+.crystal-canvas {
+  position: relative;
+  height: 560px;
+  margin-top: 16px;
+  overflow: hidden;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.crystal-info {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .crystal-canvas {
+    height: 400px;
+  }
+}

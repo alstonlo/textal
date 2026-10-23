@@ -2,34 +2,23 @@
 {% set active = "explore" %}
 {% block title %}Explorer{% endblock %}
 {% block body %}
-<section class="page-head">
-  <h1>Drug crystals</h1>
-  <p class="muted">As a demo, we process the {{ counts.drug_entries }} crystals of the CSD Drug Subset that are reported in {{ counts.drug_papers }} open-access papers of Acta Crystallographica Section E. Each tile is the filled unit cell at the same scale and angle.</p>
-</section>
-<section class="tools">
-  <label class="sr-only" for="q">Search</label>
-  <input id="q" type="search" placeholder="Search by drug, refcode, formula or journal">
-  <div class="chips" id="toggles">
-    <button type="button" class="chip{% if not form %} on{% endif %}" data-form="">All</button>
-    {% for f in forms %}<button type="button" class="chip{% if form == f %} on{% endif %}" data-form="{{ f }}">{{ names[f] }}</button>{% endfor %}
-    <button type="button" class="chip{% if form == 'neat' %} on{% endif %}" data-form="neat">{{ names.neat }}</button>
-  </div>
-  <select id="sort" aria-label="Order"><option value="name">By drug</option><option value="id">By refcode</option><option value="year">By year</option></select>
-  <span class="count muted" id="count"></span>
-</section>
-<section class="tiles" id="cards">
-  {% for e in entries %}
-  <a class="tile" href="/entry/{{ e.id }}"
-     data-name="{{ e.name|lower }}" data-id="{{ e.id }}" data-year="{{ e.year or 0 }}"
-     data-forms="{{ e.forms|join(' ') or 'neat' }}"
-     data-search="{{ (e.name ~ ' ' ~ e.id ~ ' ' ~ (e.formula or '') ~ ' ' ~ (e.chemical_name or '') ~ ' ' ~ (e.journal or '') ~ ' ' ~ (e.drugbank_ids|join(' ')))|lower }}">
-    <span class="tile-cell">{{ e.cell|safe }}</span>
-    <span class="tile-name">{{ e.name }}</span>
-    <span class="tile-fact muted">{{ e.id }}{% if e.forms %}, {{ e.forms|join(", ") }}{% endif %}{% if e.space_group %}, {{ e.space_group }}{% endif %}</span>
-  </a>
-  {% endfor %}
-</section>
+  <section class="page-head">
+    <h1>Crystal Explorer</h1>
+    <p class="muted explorer-subtitle">{{ "{:,}".format(snapshot.refcodes) }} refcodes · {{ "{:,}".format(snapshot.papers) }} papers, with the publishers' CIFs, chemical schemes and article text.</p>
+    <form class="tools explorer-tools" method="get" action="{{ root }}/explore" {% if static_site %}data-static{% endif %}><input type="search"
+       name="q"
+       value="{{ q }}"
+       placeholder="Search molecule, refcode, DOI, paper title or journal"
+       aria-label="Search entries"><select name="journal" aria-label="Journal"><option value="">All journals</option>{% for name, count in journals.items() %}<option value="{{ name }}" title="{{ name }}" {% if journal==name %}selected{% endif %}>{{ (journal_aliases.get(name) or name.split(" : ")[0].split(" (")[0])|truncate(40, False, "…", 0) }} ({{ "{:,}".format(count) }})</option>{% endfor %}</select><select name="status" aria-label="Extraction status"><option value="">All extraction statuses</option>{% for name in statuses %}<option value="{{ name }}" {% if status==name %}selected{% endif %}>{{ name|replace('_', ' ') }} ({{ statuses[name] }})</option>{% endfor %}</select><select name="sort" aria-label="Sort"><option value="refcode">Refcode A–Z</option><option value="year" {% if sort=='year' %}selected{% endif %}>Newest paper</option></select><input type="hidden" name="cif" value="{{ cif }}"><button class="chip{% if cif %} on{% endif %}" type="button" aria-pressed="{{ 'true' if cif else 'false' }}" data-cif>Has CIF</button></form>
+    <p class="results-line muted small" role="status" aria-live="polite">{{ "{:,}".format(total) }} matching entries · page {{ "{:,}".format(page) }} of {{ "{:,}".format(pages) }}</p>
+    <div class="tiles publisher-tiles">{% for e in entries %}{% set has_cif = has_publisher_cif(e.pmcid) %}<a class="tile publisher-card" href="{{ root }}/entry/{{ e.id }}" data-id="{{ e.id }}" data-year="{{ e.paper.year or 0 }}" data-status="{{ e.extraction.status }}" data-journal="{{ e.paper.journal }}" data-cif="{{ 1 if has_cif else 0 }}" data-search="{{ (e.id ~ ' ' ~ e.doi ~ ' ' ~ e.name ~ ' ' ~ e.paper.title ~ ' ' ~ e.paper.journal)|lower }}"><div class="tile-cell">{% if has_cif %}<img class="crystal-thumb"
+     src="{{ root }}/api/publisher-thumbnail/{{ e.pmcid }}.svg?v={{ thumb_version }}"
+     alt="Publisher crystal preview for {{ e.id }}"
+     loading="lazy">{% else %}<span class="no-cif-preview">{{ e.id }}<small>No publisher CIF</small></span>{% endif %}</div><div class="card-meta"><strong>{{ e.id }}</strong><span class="status-pill {{ e.extraction.status }}">{{ e.extraction.status|replace('_', ' ') }}</span></div><span class="tile-name" title="{{ e.name }}">{{ e.name }}</span><span class="tile-fact muted">{{ e.paper.journal|journal_spaces }} · {{ e.paper.year or 'Year unknown' }}</span><span class="tile-fact doi">{{ e.doi }}</span><span class="card-link">View paper & crystal →</span></a>{% endfor %}</div>
+    <p class="empty-state" {% if entries %}hidden{% endif %}>No entries match these filters. Try a broader search or choose fewer filters.</p>
+    {% if pages > 1 %}<nav class="pagination" aria-label="Results pages">{% if previous %}<a class="chip" href="{{ previous }}">← Previous</a>{% endif %}<span>Page {{ "{:,}".format(page) }} of {{ "{:,}".format(pages) }}</span>{% if next %}<a class="chip" href="{{ next }}">Next →</a>{% endif %}</nav>{% endif %}
+  </section>
 {% endblock %}
 {% block scripts %}
-<script src="/static/explore.js"></script>
+  <script src="{{ root }}/static/explore.js"></script>
 {% endblock %}

@@ -227,9 +227,6 @@ CLAUDE.md
 .vscode
 .claude
 /data
-/src/viz/assets/*
-!/src/viz/assets/.gitkeep
-!/src/viz/assets/stats.json
 /logs
 /sandbox
 .snakemake
@@ -239,3 +236,8 @@ CLAUDE.md
 /csd_papers.tar.gz
 /*.ipynb
 /uv.lock
+
+# Notes for agents and generated schema files
+/docs/
+
+.*

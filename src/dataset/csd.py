@@ -19,6 +19,31 @@ DOAJ_FALSE_MATCHES = ["Synthesis", "Matter"]
 # The NLM title abbreviation of a paper's journal, as in https://www.ncbi.nlm.nih.gov/nlmcatalog/.
 NLM_TA = re.compile(r'<journal-id journal-id-type="nlm-ta">([^<]+)<')
 
+# Acta Crystallographica Section E was renamed in 2014 (Structure Reports Online, then
+# Crystallographic Communications), so the CSD lists it under two names.
+ACTA_E = "Acta Crystallogr E"
+
+# The ten largest journals of the corpus, named as the README names them; the CSD's names are
+# terse. The figures use these names, so a journal that enters the ten must be added here.
+JOURNAL_NAMES = {
+    ACTA_E: "Acta E",
+    "Chemical Science": "Chemical Science",
+    "J.Am.Chem.Soc.": "Journal of the American Chemical Society",
+    "Angew.Chem.,Int.Ed.": "Angewandte Chemie",
+    "Molecules": "Molecules",
+    "Nat.Commun.": "Nature Communications",
+    "RSC Advances": "RSC Advances",
+    "Inorg.Chem.": "Inorganic Chemistry",
+    "Chem.-Eur.J.": "Chemistry: A European Journal",
+    "ACS Omega": "ACS Omega",
+}
+
+
+def merge_acta_e(journal):
+    """Replaces both CSD names of Acta Crystallographica Section E with `ACTA_E`, as `journal`."""
+    is_acta_e = journal.str.starts_with("Acta Crystallogr.,Sect.E")
+    return pl.when(is_acta_e).then(pl.lit(ACTA_E)).otherwise(journal).alias("journal")
+
 
 def read_papers(path):
     """Reads the paper of each CSD entry from the full CSD metadata.
