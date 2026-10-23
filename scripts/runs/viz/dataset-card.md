@@ -14,13 +14,16 @@ https://github.com/alstonlo/textal.
 - `entries.parquet`: one row per CSD refcode, with its extracted record (`extraction_json`).
 - `papers.parquet`: one row per paper, with its bibliography, authors, licence and quoted passages.
 - `snapshot.json`: counts per extraction status, collection and journal.
-- `texts/<NN>/<PMCID>.json.gz`: the text of one paper and of its supplementary documents, as
-  Markdown; `NN` is the last two digits of the PMCID.
-- `files/<NN>/<PMCID>.tar.gz`: the publisher's CIFs and chemical schemes of one paper, with a
-  manifest.
+- `texts.tar`: the folder `texts/`, where `texts/<NN>/<PMCID>.json.gz` is the text of one paper
+  and of its supplementary documents, as Markdown; `NN` is the last two digits of the PMCID.
+- `files.tar`: the folder `files/`, where `files/<NN>/<PMCID>.tar.gz` holds the publisher's CIFs
+  and chemical schemes of one paper, with a manifest.
+
+Download the dataset and unpack the two folders:
 
 ```bash
 hf download alstonlo/textal-data --repo-type dataset --local-dir data/textal
+cd data/textal && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar
 ```
 
 ## License

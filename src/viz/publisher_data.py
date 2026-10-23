@@ -91,7 +91,8 @@ def load_public_data():
         raise ValueError(
             f"{DATA} holds an older version of the dataset. Download the current one with"
             " `pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir"
-            " data/textal`, or rebuild it with `s2_assets.py`."
+            " data/textal` and unpack `texts.tar` and `files.tar` there, or rebuild it with"
+            " `s2_assets.py`."
         )
     if set(snapshot) - {
         "schema",

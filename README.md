@@ -90,14 +90,21 @@ pixi run snakemake -s scripts/Snakefile -j1 example           # the example abov
 **Data.** The dataset is on Hugging Face at
 [alstonlo/textal-data](https://huggingface.co/datasets/alstonlo/textal-data): `entries.parquet`
 (one row per CSD refcode with its extracted record), `papers.parquet` (one row per paper: its
-bibliography, authors, licence and the quoted snippets), `texts/<NN>/<PMCID>.json.gz` (the
-paper's text and supplementary documents as Markdown) and `files/<NN>/<PMCID>.tar.gz` (the CIFs
-and chemical schemes the publisher supplied with each paper), `NN` being the last two digits of
-the PMCID. Texts and files are included only for papers under a Creative Commons licence. The
-tables hold nothing from the CSD but refcodes and DOIs. Download it into `data/textal/`:
+bibliography, authors, licence and the quoted snippets), `texts.tar` (the folder `texts/`, with
+the paper's text and supplementary documents as Markdown in `texts/<NN>/<PMCID>.json.gz`) and
+`files.tar` (the folder `files/`, with the CIFs and chemical schemes the publisher supplied with
+each paper in `files/<NN>/<PMCID>.tar.gz`), `NN` being the last two digits of the PMCID. Texts
+and files are included only for papers under a Creative Commons licence. The tables hold nothing
+from the CSD but refcodes and DOIs. Download it into `data/textal/`:
 
 ```bash
 pixi run hf download alstonlo/textal-data --repo-type dataset --local-dir data/textal
+```
+
+Then unpack the two folders, which the website reads:
+
+```bash
+cd data/textal && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar
 ```
 
 **Website.** For each extracted entry, the website shows the crystal structures of its paper
