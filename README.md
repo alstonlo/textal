@@ -4,6 +4,8 @@
 
 **A dataset of crystal structures paired with text-mined crystallization procedures and outcomes.**
 
+[![data](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Data-blue)](https://huggingface.co/datasets/alstonlo/textal-data)
+
 <img src="assets/example.png" width="800" alt="The unit cell of caffeinium bisulfate monohydrate beside its extracted record: the compound matched in the paper, its synthesis, its crystallization and its solid form">
 
 </div>
