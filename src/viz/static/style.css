@@ -774,12 +774,17 @@ footer a:hover {
   gap: 12px;
   margin: 26px 0;
 }
+.entry-navigation input,
+.entry-navigation form .chip {
+  height: 36px;
+  font-size: 13px;
+}
 .entry-navigation input {
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 5px;
-  padding: 8px;
-  font: inherit;
-  font-size: 13px;
+  padding: 0 10px;
+  font-family: inherit;
 }
 .entry-navigation form {
   display: flex;
@@ -1204,9 +1209,8 @@ footer a:hover {
   }
 }
 
-/* Size each paragraph to its opening phrase; the remaining text wraps naturally. */
-.hero .lead,
-.data-disclaimer p {
+/* Size the hero paragraph to its opening phrase. */
+.hero .lead {
   width: min-content;
   max-width: 100%;
 }
@@ -1214,7 +1218,9 @@ footer a:hover {
   white-space: nowrap;
 }
 .data-disclaimer p {
-  flex-shrink: 0;
+  width: auto;
+  max-width: none;
+  min-width: 0;
 }
 @media (max-width: 1100px) {
   .hero .lead,

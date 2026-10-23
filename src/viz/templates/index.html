@@ -11,7 +11,7 @@
   </section>
   <aside class="data-disclaimer">
     <strong>Data disclosure</strong>
-    <p><span class="wrap-measure">Apart from refcodes, this site shows no data from the Cambridge Crystallographic Data Centre (CCDC). The crystal structure files (CIFs),</span> chemical schemes, and article text all come from the publishers. Publisher refcodes are shown where available.</p>
+    <p>Apart from refcodes, this site shows no data from the Cambridge Crystallographic Data Centre (CCDC).<br>The crystal structure files (CIFs), chemical schemes, and article text all come from the publishers.</p>
   </aside>
   <section class="strip">
     {% for e in hero %}
@@ -28,7 +28,7 @@
   <section class="numbers">
     <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes, linked to {{ "{:,}".format(snapshot.papers) }} papers</span></div>
     <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with stored excerpts of their text</span></div>
-    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>refcodes whose extraction has run; {{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} still pending</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>refcodes with extracted text data;<br>{{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} still pending</span></div>
   </section>
   <section class="block collection-note">
     <h2>About the entries</h2>
@@ -38,7 +38,6 @@
   <section class="block">
     <h2>Dataset overview</h2>
     <p class="muted">The charts show publication years, journals and licences for the papers in this dataset. Bibliographic details come from publishers and Europe PMC.</p>
-    <p class="small muted">Licences are taken from publisher records. “Not indexed” means no licence was recorded. Less common licences are grouped under “Other”.</p>
     <div class="charts">
       <figure class="wide">
         <figcaption><span class="key" style="--key: var(--bar)">Refcodes</span><span class="key" style="--key: var(--bar-warm)">Papers</span></figcaption>
