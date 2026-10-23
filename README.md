@@ -18,9 +18,10 @@ as evidence. The pairs support text-conditioned crystal structure prediction (CS
 predicts the crystal that a molecule forms under a written procedure, and condition generation,
 which predicts a procedure that yields a given crystal.
 
-**The extraction is not finished.** The hackathon ended before the model had read every paper:
-the records cover 28,920 of the 54,961 papers (53%). The rest of the corpus is downloaded and
-converted, and the extraction resumes where it stopped.
+> [!WARNING]
+> This project was created for the Open Scientific Intelligence Hackathon 2026. It is still a
+> prototype, and there are papers we were not able to mine: the records cover 28,920 of the
+> 54,961 papers (53%).
 
 ## Installation
 
@@ -29,8 +30,8 @@ character recognition (OCR) tool for scanned PDFs, needs a GPU and its own envir
 (`pixi install -e ocr`).
 
 ```bash
-git clone https://github.com/alstonlo/clari-data-osi-hack.git
-cd clari-data-osi-hack
+git clone https://github.com/alstonlo/textal.git
+cd textal
 pixi install
 ```
 
@@ -60,7 +61,7 @@ that are there from PMC's open-access bucket (several hours and about 200 GB; an
 download resumes) and converts them to Markdown. The papers of Acta Crystallographica Section E
 (Acta E), the journal with the most CSD entries, were also fetched as complete PMC packages,
 which hold the original crystallographic information files (CIFs) and chemical schemes that the
-website shows; those scripts ran on a cluster and are not on this branch.
+website shows.
 
 ```bash
 pixi run snakemake -s scripts/Snakefile -j1 all
@@ -75,12 +76,11 @@ pixi run python -m dataset.extraction_stream --sample 200 --run data/runs/pilot2
 pixi run python -m dataset.extraction_stream --run data/runs/corpus                  # every paper
 ```
 
-This runner reads the full Markdown of a paper. The Acta E papers were read by a second runner
-(`acta_e_stream.py`, which ran on the cluster with the Acta E packages) that reads only the
-experimental sections and makes the model pick its quotes from numbered passages, so that the
-quotes are verbatim by construction. The records of both runs are gathered in
-`data/extractions.parquet`, kept to the papers of the corpus; its `prompt_version` column tells
-the runs apart.
+This runner reads the full Markdown of a paper. We read the Acta E papers with a second runner
+that reads only the experimental sections and has the model pick its quotes from numbered
+passages, so that the quotes are verbatim by construction. The records of both runs are gathered
+in `data/extractions.parquet`, kept to the papers of the corpus; its `prompt_version` column
+tells the runs apart.
 
 ```bash
 pixi run snakemake -s scripts/Snakefile -j1 plot_extraction   # Figure 1
@@ -144,15 +144,13 @@ temperature) because we do not know what the papers report; fields can be derive
 
 Papers from other journals were read in full by `gpt-6-luna`; Acta Crystallographica Section E
 (Acta E) papers, which report one structure each in a fixed layout, were read by `gpt-5.6-luna`
-from their experimental sections only, because the full-text run exhausted gpt-6-luna's quota.
-Both ran at reasoning effort `high`, which gave the same matches and core paragraphs as `max`
-about 10 times faster.
+from their experimental sections only. Both ran at reasoning effort `high`, which gave the same
+matches and core paragraphs as `max` about 10 times faster.
 
 **Results.** The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus's
 papers (Figure 1a): 23,420 entries from 23,077 Acta E papers (85% of Acta E) and 21,646 entries
-from 5,843 papers in other journals (21% of papers in those journals), extracted in about six
-hours. The model wrote records for 44,826 entries (99.5%) and rated 98% of its matches high
-confidence.
+from 5,843 papers in other journals (21% of papers in those journals). The model wrote records
+for 44,826 entries (99.5%) and rated 98% of its matches high confidence.
 
 Most records describe synthesis and crystallization: 97% describe synthesis, 87% crystallization,
 62% characterization, 46% purpose and properties and 42% solid form (Figure 1b). The Acta E run,
@@ -168,18 +166,18 @@ Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text
 <img src="assets/results.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
 </figure></div>
 
-> **Figure 1.** (a) Paper counts for the ten largest journals, split into papers the model
-has read (blue) and papers awaiting extraction (grey), with the share read. The extraction ran
-journal by journal and stopped at the end of the hackathon, in the middle of Inorganic Chemistry.
-(b) The share of records with each topic paragraph filled, per run. The Acta E run read only the
-experimental sections, so its records rarely cover characterization, purpose or the solid form.
+> **Figure 1.** (a) Paper counts for the ten largest journals, split into papers that were mined
+(blue) and papers that were not (grey), with the share mined. Papers were mined journal by
+journal, so Inorganic Chemistry is only partly covered. (b) The share of records with each topic
+paragraph filled, per run. The Acta E run read only the experimental sections, so its records
+rarely cover characterization, purpose or the solid form.
 (c) The confidence of the match between the CSD entry and the compound in the paper.
 
-**Next steps.** Finish the extraction (26,041 papers, mostly general chemistry journals, and the
-4,149 Acta E papers the second run had not reached); check every quote of the full-text run
-against the source text automatically; derive fixed fields (method, solvents, temperature, time)
-from the paragraphs; run OCR on the scanned supplementary PDFs; and release the records of the
-CC BY papers as a public dataset.
+**Limitations.** The 26,041 papers that are not mined are mostly from general chemistry
+journals, and 4,149 of them are Acta E papers. The quotes of the full-text run are not checked
+against the source text automatically, unlike those of the Acta E run. The records are
+paragraphs, not fixed fields (method, solvents, temperature, time). The scanned supplementary
+PDFs were not read, as they need OCR.
 
 ## Licence
 
