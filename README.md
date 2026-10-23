@@ -11,7 +11,7 @@
 
 </div>
 
-TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization procedures and outcomes reported in their papers. We download the open-access papers cited in the CSD from PubMed Central (PMC), convert them to Markdown and use a large language model (LLM) to extract each entry's synthesis and crystallization procedures, with quotes from the paper as evidence. Our resulting dataset, TEXtal, supports multimodal problems such as text-conditioned crystal structure prediction (procedure → crystal), and crystallization condition prediction (crystal → procedure).
+TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization procedures and outcomes reported in their papers. We download the open-access papers cited in the CSD from PubMed Central (PMC), convert them to Markdown and use a large language model (LLM) to extract each entry's synthesis and crystallization procedures, with quotes from the paper as evidence. Our resulting dataset, TEXtal, supports multimodal problems such as text-conditioned crystal structure prediction (procedure → crystal) and crystallization condition prediction (crystal → procedure).
 
 > [!WARNING]
 > This project was created for the Open Scientific Intelligence Hackathon 2026. It is still a prototype: the records cover 28,920 of the 54,961 papers in the corpus (53%).
@@ -103,9 +103,9 @@ pixi run snakemake -s scripts/Snakefile -j1 release
 
 ## About TEXtal
 
-Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized. The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it. In related streams beyond CSP, there is growing interest in multimodal or text-aligned generative models, such as for proteins and molecules.
+Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized. The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it. In related fields beyond CSP, there is growing interest in multimodal or text-aligned generative models, such as for proteins and molecules.
 
-Mining these procedures is limited by access to the papers more than by the extraction method. Of the 554,956 papers the CSD cites, only 56,225 are in the open-access list of PubMed Central (PMC), covering roughly 121,147 out of the >1M CSD entries. TEXtal holds records for 44,826 CSD entries extracted from these papers, and 39,082 of these records include a crystallization paragraph.
+Mining these procedures is limited by access to the papers more than by the extraction method. Of the 554,956 papers the CSD cites, only 56,225 are in the open-access list of PubMed Central (PMC), covering 121,147 of the more than 1 million CSD entries. TEXtal holds records for 44,826 CSD entries extracted from these papers, and 39,082 of these records include a crystallization paragraph.
 
 ### Approach
 
@@ -134,7 +134,7 @@ Of the 45,066 entries in the extracted papers, the model returned a record for 4
 - **Extract more papers.** Extract the remaining 26,041 papers of the corpus and, with access from publishers, the cited papers outside PMC's open-access list.
 - **Make the extraction more robust and verifiable.** Read full papers as numbered sentences, as in the Acta E run, so that every quote is verbatim and can be checked against the paper.
 - **Use a more granular schema.** Derive fixed fields, such as solvent, method and temperature, from the topic paragraphs, or have an LLM propose the fields from the paragraphs (schema induction).
-- **Train models on the data.** Train models for text-conditioned CSP and condition generation, and test whether the procedure improves predictions over the molecule alone.
+- **Train models on the data.** Train models for text-conditioned CSP and crystallization condition prediction, and test whether the procedure improves predictions over the molecule alone.
 
 ## Licence
 
