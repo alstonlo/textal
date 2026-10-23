@@ -26,9 +26,25 @@
     {% endfor %}
   </section>
   <section class="numbers">
-    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes, linked to {{ "{:,}".format(snapshot.papers) }} papers</span></div>
-    <div><b>{{ "{:,}".format(snapshot.with_snippets) }}</b><span>papers with stored excerpts of their text</span></div>
-    <div><b>{{ "{:,}".format(snapshot.refcodes - snapshot.extraction_statuses.get('pending', 0)) }}</b><span>refcodes with extracted text data;<br>{{ "{:,}".format(snapshot.extraction_statuses.get('pending', 0)) }} still pending</span></div>
+    <div><b>{{ "{:,}".format(snapshot.refcodes) }}</b><span>refcodes listed on this site</span></div>
+    <div><b>{{ "{:,}".format(snapshot.papers) }}</b><span>papers represented on this site</span></div>
+    <div><b>{{ "{:,}".format(stats.counts.cif_entries) }}</b><span>refcodes with publisher-sourced CIFs</span></div>
+  </section>
+  <section class="block coverage-section">
+    <h2>Extraction progress across the full corpus</h2>
+    <div class="coverage-rows">
+      {% for row in stats.coverage %}
+      <figure class="coverage-row">
+        <figcaption><strong>{{ row.label }}</strong><span class="muted num">{{ "{:,}".format(row.total) }} total</span></figcaption>
+        <div class="coverage-bar" role="img" aria-label="{{ row.label }}: {% for segment in row.segments %}{{ '{:,}'.format(segment.count) }} {{ segment.label|lower }}{% if not loop.last %}, {% endif %}{% endfor %}">
+          {% for segment in row.segments %}<span class="coverage-segment {{ segment.kind }}" style="width: {{ segment.percent }}%" title="{{ segment.label }}: {{ '{:,}'.format(segment.count) }} ({{ '%.1f'|format(segment.percent) }}%)">{% if segment.percent >= 15 %}{{ '%.0f'|format(segment.percent) }}%{% endif %}</span>{% endfor %}
+        </div>
+        <ul class="coverage-legend">
+          {% for segment in row.segments %}<li><i class="{{ segment.kind }}" aria-hidden="true"></i>{{ segment.label }} <span class="num">{{ "{:,}".format(segment.count) }}</span></li>{% endfor %}
+        </ul>
+      </figure>
+      {% endfor %}
+    </div>
   </section>
   <section class="block collection-note">
     <h2>About the entries</h2>
@@ -39,16 +55,16 @@
     <h2>Dataset overview</h2>
     <p class="muted">The charts show publication years, journals and licences for the papers in this dataset. Bibliographic details come from publishers and Europe PMC.</p>
     <div class="charts">
-      <figure class="wide">
+      <figure>
         <figcaption><span class="key" style="--key: var(--bar)">Refcodes</span><span class="key" style="--key: var(--bar-warm)">Papers</span></figcaption>
         <div class="plot" id="years"></div>
       </figure>
       <figure>
-        <figcaption>Paper Journals</figcaption>
+        <figcaption>Journals</figcaption>
         <div class="plot" id="journals"></div>
       </figure>
       <figure>
-        <figcaption>Paper Licences</figcaption>
+        <figcaption>Licences</figcaption>
         <div class="plot" id="licenses"></div>
       </figure>
     </div>

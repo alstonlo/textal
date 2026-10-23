@@ -312,9 +312,32 @@ def thumbnail(pmcid):
     """Original main-site unit-cell drawing, generated exclusively from publisher bytes."""
     from viz.crystal import draw_cell
 
+    if pmcid not in PAPERS:
+        raise ValueError("Unknown publisher paper")
+    stat = (DATA / package_name(pmcid)).stat()
+    signature = json.dumps([THUMB_VERSION, stat.st_mtime_ns, stat.st_size, PAPERS[pmcid]["doi"]])
+    key = hashlib.sha256(signature.encode()).hexdigest()
+    cached = DATA / ".cache" / "textal" / "thumbnails" / f"{pmcid}-{key}.svg"
+    try:
+        return cached.read_text()
+    except OSError:
+        pass
     data, _ = package(pmcid)
     if not data["cifs"]:
         raise ValueError("No publisher CIF available")
     models = cif_models(pmcid, data["cifs"][0]["cache_name"])
     with MODEL_LIMIT:
-        return draw_cell(models["blocks"][0]["text"])
+        svg = draw_cell(models["blocks"][0]["text"])
+    temporary = None
+    try:
+        cached.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(mode="w", dir=cached.parent, delete=False) as out:
+            temporary = Path(out.name)
+            out.write(svg)
+        temporary.replace(cached)
+    except OSError:
+        pass  # A read-only dataset can still serve generated previews.
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+    return svg

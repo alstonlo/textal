@@ -8,6 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import quote, urlencode
 
+import anyio
 import plotly.graph_objects as go
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.gzip import GZipMiddleware
@@ -131,6 +132,35 @@ def bars(counts: list[tuple[str, int]], other: str) -> dict:
     )
 
 
+# Downloaded PMC corpus for this release (README, Approach); distinct from the OA list.
+DOWNLOADED_PAPERS = 54_961
+
+
+def extraction_coverage(entries, corpus_papers=DOWNLOADED_PAPERS):
+    processed = [e for e in entries if e["extraction"]["status"] != "pending"]
+    processed_papers = len({e["paper_id"] for e in processed})
+    listed_papers = len({e["paper_id"] for e in entries})
+    rows = []
+    for label, total, groups in (
+        ("Downloaded PMC papers", corpus_papers, (
+            ("Extraction attempted", "processed", processed_papers),
+            ("Listed, awaiting extraction", "pending", listed_papers - processed_papers),
+            ("Not yet listed or extracted", "outside", corpus_papers - listed_papers),
+        )),
+    ):
+        counts = [count for _, _, count in groups]
+        if any(n < 0 for n in counts) or sum(counts) != total:
+            raise ValueError("Dataset coverage does not match the corpus totals")
+        segments = [
+            {"label": name, "count": count, "kind": kind,
+             "percent": 100 * count / total if total else 0}
+            for name, kind, count in groups
+            if count
+        ]
+        rows.append({"label": label, "total": total, "segments": segments})
+    return rows
+
+
 def load_stats(entries):
     # Every plotted attribute comes from publisher bibliography; only identifier
     # linkage comes from the CSD. Legacy CSD statistics are not opened.
@@ -174,13 +204,17 @@ def load_stats(entries):
         "journals": bars(top, other="Other journals"),
         "licenses": bars(common, other="Other"),
     }
+    cif_entries = sum(publisher_assets.has_cif(e["pmcid"]) for e in entries)
+    publisher_assets.save_cif_index()
     return {
         "counts": {
+            "cif_entries": cif_entries,
             "entries": len(entries),
             "pmc_papers": len(PAPERS),
             "pmc_entries": sum(bool(e["pmcid"]) for e in entries),
         },
         "figures": figures,
+        "coverage": extraction_coverage(entries),
     }
 
 
@@ -225,6 +259,8 @@ templates.env.globals["thumb_version"] = publisher_assets.THUMB_VERSION
 templates.env.globals["has_publisher_cif"] = publisher_assets.has_cif
 templates.env.globals["journal_aliases"] = JOURNAL_ALIASES
 PAGE_SIZE = 48
+# Preview jobs must not exhaust the worker pool used by pages and filters.
+THUMBNAIL_LIMIT = anyio.CapacityLimiter(2)
 
 
 def extraction_date(value):
@@ -243,7 +279,7 @@ templates.env.filters["format_journal"] = format_journal
 async def update_public_snapshot(request, call_next):
     # A completed import becomes visible on the next page load; the API never reads
     # in-progress extraction output or legacy CSD tables.
-    refresh_snapshot()
+    await anyio.to_thread.run_sync(refresh_snapshot)
     return await call_next(request)
 
 
@@ -393,11 +429,17 @@ def crystal_frame(request: Request):
 
 
 @app.get("/api/publisher-thumbnail/{pmcid}.svg")
-def publisher_thumbnail(pmcid: str):
+async def publisher_thumbnail(pmcid: str):
     if pmcid not in publisher_assets.PAPERS:
         raise HTTPException(404, "Unknown publisher paper")
     try:
-        return Response(publisher_assets.thumbnail(pmcid), media_type="image/svg+xml")
+        svg = await anyio.to_thread.run_sync(
+            publisher_assets.thumbnail, pmcid, limiter=THUMBNAIL_LIMIT
+        )
+        return Response(
+            svg, media_type="image/svg+xml",
+            headers={"Cache-Control": "public, max-age=3600"},
+        )
     except Exception:  # noqa: BLE001 -- never expose parser internals or private paths
         # A missing publisher preview must never fall back to a CSD depiction.
         return Response(
