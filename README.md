@@ -83,9 +83,9 @@ pixi run snakemake -s scripts/Snakefile -j1 example           # the example abov
 
 ## About TEXtal
 
-Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized. Generative models of crystals increasingly use text or several types of input at once. The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it, and we found no public dataset pairing CSD structures with their procedures.
+Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized. Generative models of crystals increasingly use text or several types of input at once. The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it.
 
-Mining these procedures is limited by access more than by method. Of the 554,956 papers the CSD cites, only the 56,225 in the open-access list of PubMed Central (PMC) can be downloaded freely; they cover 121,147 CSD entries, including about one in five of the CSD entries added since 2020. TEXtal links 39,082 CSD entries to their crystallization paragraphs extracted from these papers.
+Mining these procedures is limited by access to the papers more than by the extraction method. Of the 554,956 papers the CSD cites, only the 56,225 in the open-access list of PubMed Central (PMC) can be downloaded freely; they cover 121,147 CSD entries, including about one in five of the CSD entries added since 2020. TEXtal holds records for 44,826 CSD entries extracted from these papers, and 39,082 of these records include a crystallization paragraph.
 
 ### Approach
 
@@ -93,21 +93,14 @@ We use a large language model (LLM) to extract one record per CSD entry from its
 
 Each record holds the paper's label for the compound (e.g. "3a"), the model's confidence in the match between the entry and the compound (high, medium or low) with its reason, and one paragraph per topic: synthesis (compound preparation), crystallization (crystal growth), characterization (other measurements), solid form (such as a salt or hydrate, a crystal containing water) and purpose and properties. Each filled paragraph must cite at least one verbatim quote. We chose paragraphs over fixed fields (solvent, method, temperature) because we did not know what the papers would report; fields can be derived later.
 
-We send one LLM request per paper, with the paper's Markdown and a table of its CSD entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC) deposition number (deposited structure identifier), name, formula and fields such as temperature, polymorph and colour. The reply follows a JSON schema with one record per entry. We instruct the model to keep records separate for polymorphs, solvates and measurements at different temperatures, to copy shared procedures into each compound's record, to write only what the paper says and to omit what the CSD already holds (unit cell, the repeating crystal cell; molecular geometry; molecular packing).
+We send one LLM request per paper, with the paper's Markdown and a table of its CSD entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC) deposition number (deposited structure identifier), name, formula and fields such as temperature, polymorph and colour. The reply follows a JSON schema with one record per entry. We instruct the model to keep records separate for polymorphs, solvates and measurements at different temperatures, to copy shared procedures into each compound's record, to write only what the paper says and to omit what the CSD already holds (the unit cell, which is the repeating unit of the crystal; the molecular geometry; and the molecular packing).
 
 In the full-text run, `gpt-6-luna` read the full papers from journals other than Acta Crystallographica Section E (Acta E). Acta E papers report one structure each in a fixed layout, so in the Acta E run, `gpt-5.6-luna` read only their experimental sections, split into numbered sentences. The model cites sentence numbers, and the code copies the cited sentences from the paper, so the quotes in the Acta E run are verbatim. Both runs used the reasoning-effort setting `high`, which gave the same matches as `max` about 10 times faster.
 
 ### Results
 
-The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus (Figure 1a). Coverage is higher for Acta E: 23,420 entries from 23,077 Acta E papers (85% of the Acta E papers in the corpus), compared with 21,646 entries from 5,843 papers in other journals (21% of their papers in the corpus).
-
-Most records describe synthesis (97%) and crystallization (87%); fewer describe characterization (62%), purpose and properties (46%) or solid form (42%) (Figure 1b).
-
-The model returned a record for 44,826 of the 45,066 entries (99.5%) and rated its confidence in the match as high in 98% of the records (Figure 1c).
-
-In a manual check of 10 papers, the model matched all 23 entries to the right compound; of its 337 quotes, 27 differed from the paper, mostly in hyphenation or letter case.
-
-Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can be shared.
+The extraction covers **45,066 CSD entries from 28,920 papers**, 53% of the corpus (Figure 1a). Coverage is higher for Acta E: 23,420 entries from 23,077 Acta E papers (85% of the Acta E papers in the corpus), compared with 21,646 entries from 5,843 papers in other journals (21% of their papers in the corpus). Most records describe synthesis (97%) and crystallization (87%); fewer describe characterization (62%), purpose and properties (46%) or solid form (42%) (Figure 1b).
+Of the 45,066 entries in the extracted papers, the model returned a record for 44,826 (99.5%) and rated its confidence in the match as high in 98% of the records (Figure 1c). In a manual check of 10 papers, the model matched all 23 entries to the right compound; of its 337 quotes, 27 differed from the paper, mostly in hyphenation or letter case. Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text can be shared.
 
 <div align="center"><figure>
 <img src="assets/results.png" width="700" alt="Extracted papers of the ten largest journals, and the filled paragraphs and match confidence of the records of the two runs">
@@ -117,10 +110,10 @@ Of the papers, 74% are under Creative Commons Attribution (CC BY), so their text
 
 ### Next steps
 
-- Extract the remaining 26,041 papers, mostly from general chemistry journals (4,149 are Acta E).
-- Automatically check the full-text run's quotes against the source papers.
-- Read the 861 scanned supplementary PDFs with MinerU.
-- Derive fixed fields, such as solvent, method and temperature, from the topic paragraphs.
+- **Extract more papers.** Extract the remaining 26,041 papers of the corpus and, with access from publishers, the cited papers outside PMC's open-access list.
+- **Make the extraction more robust and verifiable.** Read full papers as numbered sentences, as in the Acta E run, so that every quote is verbatim and can be checked against the paper.
+- **Use a more granular schema.** Derive fixed fields, such as solvent, method and temperature, from the topic paragraphs, or have an LLM propose the fields from the paragraphs (schema induction).
+- **Train models on the data.** Train models for text-conditioned CSP and condition generation, and test whether the procedure improves predictions over the molecule alone.
 
 ## Licence
 
