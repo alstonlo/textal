@@ -51,18 +51,20 @@ JMOL_COLOURS = {
 
 
 def legible(colour: str) -> str:
-    """The colour darkened to a lightness of at most 0.55, so that a flat dot shows on the light
-    tiles; scaling keeps its hue and how muted it is."""
-    rgb = [int(colour[i : i + 2], 16) for i in (1, 3, 5)]
-    f = min(1.0, 0.55 / colorsys.rgb_to_hls(*(v / 255 for v in rgb))[1])
-    return "#" + "".join(f"{round(f * v):02X}" for v in rgb)
+    """The colour at a lightness of at most 0.5 and the saturation of the site's palette, so that
+    a flat dot shows on the light tiles without turning muddy; greys stay grey."""
+    rgb = (int(colour[i : i + 2], 16) / 255 for i in (1, 3, 5))
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    s = 0.0 if (s < 0.15) else min(s, 0.6)
+    return "#" + "".join(f"{round(255 * v):02X}" for v in colorsys.hls_to_rgb(h, min(l, 0.5), s))
 
 
 # Element colours for the drawings: CPK hues, in the site's palette, and the Jmol hues for the rest.
 ELEMENT_COLOURS = {
     **{e: legible(c) for e, c in JMOL_COLOURS.items()},
     "C": "#333333", "N": "#3B4BC9", "O": "#C8324E", "S": "#E0A400", "P": "#EB7A24",
-    "F": "#34B868", "Cl": "#25A443", "Br": "#9B2235", "I": "#7A3BD0",
+    "F": "#34B868", "Cl": "#25A443", "Br": "#9B2235", "I": "#7A3BD0", "Co": "#B455B6",
+    "B": "#E0709A", "Al": "#808080", "Ga": "#808080", "In": "#808080",
 }  # fmt: skip
 OTHER_COLOUR = "#7A7A78"
 
@@ -70,7 +72,7 @@ OTHER_COLOUR = "#7A7A78"
 # its shading keeps the light Jmol colours visible.
 VIEWER_COLOURS = {
     **ELEMENT_COLOURS, **JMOL_COLOURS,
-    "C": "#8C8C88", "H": "#E4E4E0", "O": "#D9405C", "S": "#F2B400",
+    "C": "#8C8C88", "H": "#E4E4E0", "O": "#D9405C", "S": "#F2B400", "Co": "#B455B6",
 }  # fmt: skip
 
 

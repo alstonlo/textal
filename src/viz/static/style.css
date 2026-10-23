@@ -408,6 +408,7 @@ footer a:hover {
   color: var(--fill-ink);
 }
 .tools select {
+  max-width: 280px;
   height: 32px;
   padding: 0 8px;
   border: 1px solid var(--line);

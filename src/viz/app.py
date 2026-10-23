@@ -211,6 +211,7 @@ templates = Jinja2Templates(directory=HERE / "templates")
 templates.env.globals["root"] = ""
 templates.env.globals["static_site"] = False
 templates.env.globals["thumb_version"] = publisher_assets.THUMB_VERSION
+templates.env.globals["journal_aliases"] = JOURNAL_ALIASES
 PAGE_SIZE = 48
 
 
