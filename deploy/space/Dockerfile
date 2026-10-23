@@ -21,9 +21,9 @@ ENV PYTHONPATH=/home/user/app/src TEXTAL_DATA=/home/user/data
 # Keep downloads and extraction out of container startup. Pin a dataset commit
 # with this build argument when publishing a new data release.
 ARG DATASET_REVISION=main
-RUN hf download alstonlo/textal-data --repo-type dataset --revision "$DATASET_REVISION" \
-        --include entries.parquet papers.parquet snapshot.json texts.tar files.tar \
-        --local-dir "$TEXTAL_DATA" \
+RUN hf download alstonlo/textal-data \
+        entries.parquet papers.parquet snapshot.json texts.tar files.tar \
+        --repo-type dataset --revision "$DATASET_REVISION" --local-dir "$TEXTAL_DATA" \
     && cd "$TEXTAL_DATA" && tar -xf texts.tar && tar -xf files.tar && rm texts.tar files.tar
 
 COPY --chown=user src/viz src/viz
