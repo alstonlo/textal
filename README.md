@@ -11,7 +11,7 @@
 
 </div>
 
-TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization procedures and outcomes reported in their papers. We download the open-access papers cited in the CSD from PubMed Central (PMC), convert them to Markdown and use a large language model (LLM) to extract each entry's synthesis and crystallization procedures, with quotes from the paper as evidence. Our resulting dataset, TEXtal, supports multimodal problems such as text-conditioned crystal structure prediction (CSP), which predicts the crystal that a molecule forms under a procedure, or condition generation, which predicts a procedure that yields a given crystal.
+TEXtal links entries in the Cambridge Structural Database (CSD) to the crystallization procedures and outcomes reported in their papers. We download the open-access papers cited in the CSD from PubMed Central (PMC), convert them to Markdown and use a large language model (LLM) to extract each entry's synthesis and crystallization procedures, with quotes from the paper as evidence. Our resulting dataset, TEXtal, supports multimodal problems such as text-conditioned crystal structure prediction (procedure → crystal), and crystallization condition prediction (crystal → procedure).
 
 > [!WARNING]
 > This project was created for the Open Scientific Intelligence Hackathon 2026. It is still a prototype: the records cover 28,920 of the 54,961 papers in the corpus (53%).
@@ -48,6 +48,8 @@ View the data through the [Explorer](https://huggingface.co/spaces/alstonlo/text
 ```bash
 pixi run web --port 8000
 ```
+
+The current website release lists **50,405 refcodes from 33,109 papers**, including **29,751 refcodes with publisher-sourced CIFs**. It includes refcodes from the extraction runs and additional Acta E records; it does not list every refcode in the downloaded corpus. Of the listed refcodes, 45,066 have an extraction attempt and 5,339 await extraction. Those 5,339 are only the backlog within the website release, not the backlog for the full corpus. The homepage therefore shows extraction progress by paper across all 54,961 downloaded papers: 28,920 with extraction attempted, 4,189 listed and awaiting extraction, and 21,852 not yet listed or extracted. The latter two groups total 26,041 papers awaiting extraction; the 4,189 listed papers contain the 5,339 pending refcodes.
 
 ### Processing
 
@@ -99,21 +101,19 @@ pixi run snakemake -s scripts/Snakefile -j1 example           # the example abov
 pixi run snakemake -s scripts/Snakefile -j1 release
 ```
 
-The current website release lists **50,405 refcodes from 33,109 papers**, including **29,751 refcodes with publisher-sourced CIFs**. It includes refcodes from the extraction runs and additional Acta E records; it does not list every refcode in the downloaded corpus. Of the listed refcodes, 45,066 have an extraction attempt and 5,339 await extraction. Those 5,339 are only the backlog within the website release, not the backlog for the full corpus. The homepage therefore shows extraction progress by paper across all 54,961 downloaded papers: 28,920 with extraction attempted, 4,189 listed and awaiting extraction, and 21,852 not yet listed or extracted. The latter two groups total 26,041 papers awaiting extraction; the 4,189 listed papers contain the 5,339 pending refcodes.
-
 ## About TEXtal
 
-Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized.The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it. In related streams beyond CSP, there is growing interest in multimodal or text-aligned generative models, such as for proteins and molecules.
+Generative models for crystal structure prediction (CSP) predict how a molecule packs into a crystal from the molecule alone. Yet the same molecule can form polymorphs (different molecular arrangements), solvates (crystals containing solvent) or salts (ionic compounds), depending on how it was crystallized. The crystallization procedure is a natural input for these models, but the Cambridge Structural Database (CSD) does not store it. In related streams beyond CSP, there is growing interest in multimodal or text-aligned generative models, such as for proteins and molecules.
 
 Mining these procedures is limited by access to the papers more than by the extraction method. Of the 554,956 papers the CSD cites, only 56,225 are in the open-access list of PubMed Central (PMC), covering roughly 121,147 out of the >1M CSD entries. TEXtal holds records for 44,826 CSD entries extracted from these papers, and 39,082 of these records include a crystallization paragraph.
 
 ### Approach
 
-We use a large language model (LLM) to extract one record per CSD entry from its paper. We download the papers from PMC's open-access bucket on Amazon Web Services, which held 54,961 of them (203 GB) with full text as XML, to form our corpus. We use pandoc to efficiently convert the XML to Markdown without optical character recognition (OCR), and PyMuPDF4LLM reads the text layer of supplementary PDFs. In 861 papers (1.6%), a supplementary PDF is a scanned image without a text layer. These PDFs require OCR with MinerU and remain unread.
+We use a large language model (LLM) to extract one record per CSD entry from its paper. We download the papers from PMC's open-access bucket on Amazon Web Services, which held 54,961 of them (203 GB) with full text as XML, to form our corpus. We use pandoc to efficiently convert the XML to Markdown without optical character recognition (OCR), and PyMuPDF4LLM reads the text layer of supplementary PDFs. In 861 papers (1.6%), a supplementary PDF is a scanned image without a text layer. These PDFs require OCR with MinerU and we did not parse them.
 
 Each record holds the paper's label for the compound (e.g. "3a"), the model's confidence in the match between the entry and the compound (high, medium or low) with its reason, and one paragraph per topic: synthesis (compound preparation), crystallization (crystal growth), characterization (other measurements), solid form (such as a salt, or a hydrate, which is a crystal containing water) and purpose and properties. Each filled paragraph must cite at least one verbatim quote. We chose paragraphs over fixed fields (solvent, method, temperature) because we did not know what the papers would report; fields can be derived later.
 
-We send one LLM request per paper, with the paper's Markdown and a table of its CSD entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC) deposition number (deposited structure identifier), name, formula and fields such as temperature, polymorph and colour. The reply follows a JSON schema with one record per entry. We instruct the model to keep records separate for polymorphs, solvates and measurements at different temperatures, to copy shared procedures into each compound's record, to write only what the paper says and to omit what the CSD already holds (the unit cell, which is the repeating unit of the crystal; the molecular geometry; and the molecular packing).
+We send one LLM request per paper, with the paper's Markdown and a table of its CSD entries: refcode (entry identifier), Cambridge Crystallographic Data Centre (CCDC) deposition number (deposited structure identifier), name, formula and fields such as temperature, polymorph and colour. The reply follows a JSON schema with one record per entry. We instruct the model to keep records separate for polymorphs, solvates and measurements at different temperatures, to copy shared procedures into each compound's record, to write only what the paper says and to omit CSD data.
 
 In the full-text run, `gpt-6-luna` read the full papers from journals other than Acta Crystallographica Section E (Acta E). Acta E papers report one structure each in a fixed layout, so in the Acta E run, `gpt-5.6-luna` read only their experimental sections, split into numbered sentences. The model cites sentence numbers, and the code copies the cited sentences from the paper, so the quotes in the Acta E run are verbatim. Both runs used the reasoning-effort setting `high`, which gave the same matches as `max` about 10 times faster.
 
